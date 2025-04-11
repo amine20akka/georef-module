@@ -21,7 +21,6 @@ public class GeorefMapper {
                 .status(entity.getStatus())
                 .resamplingMethod(entity.getResamplingMethod())
                 .compression(entity.getCompression())
-                .gcpsCount(entity.getGcpsCount())
                 .meanResidual(entity.getMeanResidual())
                 .gcps(gcpDtos)
                 .layer(layerDto)
@@ -40,7 +39,6 @@ public class GeorefMapper {
         entity.setStatus(dto.getStatus());
         entity.setResamplingMethod(dto.getResamplingMethod());
         entity.setCompression(dto.getCompression());
-        entity.setGcpsCount(dto.getGcpsCount());
         entity.setMeanResidual(dto.getMeanResidual());
         return entity;
     }

@@ -43,8 +43,6 @@ public class GeorefImage {
     @Enumerated(EnumType.STRING)
     private Compression compression;
 
-    private Integer gcpsCount;
-
     private Double meanResidual;
 
     @OneToMany(mappedBy = "image", cascade = CascadeType.ALL, orphanRemoval = true)

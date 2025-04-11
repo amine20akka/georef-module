@@ -24,7 +24,6 @@ public class GeorefImageDto {
     private GeorefStatus status;
     private ResamplingMethod resamplingMethod;
     private Compression compression;
-    private Integer gcpsCount;
     private Double meanResidual;
 
     private List<GcpDto> gcps;
