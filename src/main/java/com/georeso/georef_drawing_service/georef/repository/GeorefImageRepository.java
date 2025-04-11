@@ -1,8 +1,12 @@
 package com.georeso.georef_drawing_service.georef.repository;
 
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
 
-public interface GeorefImageRepository extends JpaRepository<GeorefImage, Long> {
+public interface GeorefImageRepository extends JpaRepository<GeorefImage, UUID> {
+    boolean existsByHash(String hash);
+    GeorefImage findByHash(String hash);
 }

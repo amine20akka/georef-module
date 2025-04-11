@@ -16,6 +16,7 @@ import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
 import com.georeso.georef_drawing_service.georef.enums.GeorefStatus;
 import com.georeso.georef_drawing_service.georef.mapper.GeorefMapper;
 import com.georeso.georef_drawing_service.georef.repository.GeorefImageRepository;
+import com.georeso.georef_drawing_service.georef.util.FileUtils;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,23 +28,30 @@ public class GeorefImageService {
     private final StorageConfig storageConfig;
 
     public GeorefImageDto uploadImage(MultipartFile file) {
+    try {
+        String hash = FileUtils.calculateSHA256(file);
 
-        // Créer un nom unique
+        // Vérifier si une image avec le même hash existe déjà
+        if (repository.existsByHash(hash)) {
+            return GeorefMapper.toDto(repository.findByHash(hash), null, null);
+        }
+
         String filename = UUID.randomUUID() + "_" + file.getOriginalFilename();
         Path targetPath = storageConfig.getOriginalDir().resolve(filename);
-
-        try {
-            Files.copy(file.getInputStream(), targetPath);
-        } catch (IOException e) {
-            throw new ImageUploadException("Impossible d'importer l'image", e);
-        }
+        Files.copy(file.getInputStream(), targetPath);
 
         GeorefImage image = new GeorefImage();
         image.setFilepathOriginal(targetPath.toString());
+        image.setHash(hash);
         image.setUploadingDate(LocalDateTime.now());
         image.setStatus(GeorefStatus.UPLOADED);
 
         GeorefImage saved = repository.save(image);
         return GeorefMapper.toDto(saved, null, null);
+
+    } catch (IOException e) {
+        throw new ImageUploadException("Impossible d'importer l'image", e);
     }
+}
+
 }

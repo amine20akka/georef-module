@@ -10,11 +10,12 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class GeorefImageDto {
 
-    private Long id;
+    private UUID id;
     private String filepathOriginal;
     private String filepathGeoreferenced;
     private LocalDateTime uploadingDate;

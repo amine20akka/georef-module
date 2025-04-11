@@ -1,5 +1,7 @@
 package com.georeso.georef_drawing_service.georef.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,8 +11,8 @@ import lombok.*;
 public class Gcp {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
 
     @ManyToOne
     @JoinColumn(name = "image_id", nullable = false)

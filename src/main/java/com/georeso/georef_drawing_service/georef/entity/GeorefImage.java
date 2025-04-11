@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import com.georeso.georef_drawing_service.georef.enums.Compression;
 import com.georeso.georef_drawing_service.georef.enums.GeorefStatus;
@@ -13,12 +14,19 @@ import com.georeso.georef_drawing_service.georef.enums.TransformationType;
 
 @Entity
 @Table(name = "georef_images", schema = "georef")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class GeorefImage {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
+
+    @Column(unique = true)
+    private String hash;
 
     private String filepathOriginal;
 
