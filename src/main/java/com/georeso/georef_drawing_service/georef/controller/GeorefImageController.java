@@ -26,20 +26,14 @@ public class GeorefImageController {
 
     private final GeorefImageService imageService;
 
-    @Operation(
-        summary = "Importer une image raster",
-        description = "Permet d'importer une image à géoréférencer. Le fichier doit être au format PNG, JPEG ou TIFF.",
-        responses = {
-            @ApiResponse(responseCode = "200", description = "Image importée avec succès",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
+    @Operation(summary = "Importer une image raster", description = "Permet d'importer une image à géoréférencer. Le fichier doit être au format PNG, JPEG ou TIFF.", responses = {
+            @ApiResponse(responseCode = "200", description = "Image importée avec succès", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
             @ApiResponse(responseCode = "400", description = "Fichier invalide"),
             @ApiResponse(responseCode = "500", description = "Erreur interne lors de l'importation")
-        }
-    )
+    })
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<GeorefImageDto> uploadImage(@RequestParam("file") MultipartFile file) {
-
-        GeorefImageDto response = imageService.uploadImage(file);
-        return ResponseEntity.ok(response);
+        GeorefImageDto imageDto = imageService.uploadImage(file);
+        return ResponseEntity.ok(imageDto);
     }
 }

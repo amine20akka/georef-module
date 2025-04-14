@@ -16,6 +16,7 @@ import java.util.UUID;
 public class GeorefImageDto {
 
     private UUID id;
+    private String hash;
     private String filepathOriginal;
     private String filepathGeoreferenced;
     private LocalDateTime uploadingDate;

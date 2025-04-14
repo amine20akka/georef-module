@@ -12,6 +12,7 @@ public class GeorefMapper {
     public static GeorefImageDto toDto(GeorefImage entity, List<GcpDto> gcpDtos, GeorefLayerDto layerDto) {
         return GeorefImageDto.builder()
                 .id(entity.getId())
+                .hash(entity.getHash())
                 .filepathOriginal(entity.getFilepathOriginal())
                 .filepathGeoreferenced(entity.getFilepathGeoreferenced())
                 .uploadingDate(entity.getUploadingDate())
@@ -30,6 +31,7 @@ public class GeorefMapper {
     public static GeorefImage toEntity(GeorefImageDto dto) {
         GeorefImage entity = new GeorefImage();
         entity.setId(dto.getId());
+        entity.setHash(dto.getHash());
         entity.setFilepathOriginal(dto.getFilepathOriginal());
         entity.setFilepathGeoreferenced(dto.getFilepathGeoreferenced());
         entity.setUploadingDate(dto.getUploadingDate());
