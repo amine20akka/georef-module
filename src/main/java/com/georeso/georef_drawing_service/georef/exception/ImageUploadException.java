@@ -1,4 +1,4 @@
-package com.georeso.georef_drawing_service.common.exception;
+package com.georeso.georef_drawing_service.georef.exception;
 
 public class ImageUploadException extends RuntimeException {
     public ImageUploadException(String message) {

@@ -21,15 +21,15 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/georef/images")
 @RequiredArgsConstructor
-@Tag(name = "Importation", description = "Importation des images raster pour géoréférencement")
+@Tag(name = "GeorefImageController", description = "Controller pour la gestion des images géoréférencées")
 public class GeorefImageController {
 
     private final GeorefImageService imageService;
 
     @Operation(summary = "Importer une image raster", description = "Permet d'importer une image à géoréférencer. Le fichier doit être au format PNG, JPEG ou TIFF.", responses = {
             @ApiResponse(responseCode = "200", description = "Image importée avec succès", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
-            @ApiResponse(responseCode = "400", description = "Fichier invalide"),
-            @ApiResponse(responseCode = "500", description = "Erreur interne lors de l'importation")
+            @ApiResponse(responseCode = "415", description = "Format de fichier non supporté", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
+            @ApiResponse(responseCode = "500", description = "Erreur interne lors de l'importation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
     })
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<GeorefImageDto> uploadImage(@RequestParam("file") MultipartFile file) {

@@ -1,21 +1,22 @@
 package com.georeso.georef_drawing_service.georef.service;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.georeso.georef_drawing_service.common.exception.ImageUploadException;
-import com.georeso.georef_drawing_service.config.StorageConfig;
 import com.georeso.georef_drawing_service.georef.dto.GeorefImageDto;
 import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
-import com.georeso.georef_drawing_service.georef.enums.GeorefStatus;
+import com.georeso.georef_drawing_service.georef.exception.ImageUploadException;
+import com.georeso.georef_drawing_service.georef.exception.UnsupportedImageFormatException;
 import com.georeso.georef_drawing_service.georef.mapper.GeorefMapper;
 import com.georeso.georef_drawing_service.georef.repository.GeorefImageRepository;
-import com.georeso.georef_drawing_service.georef.util.FileUtils;
+import com.georeso.georef_drawing_service.georef.service.port.FileStorageService;
+import com.georeso.georef_drawing_service.georef.service.port.GeorefImageFactory;
+import com.georeso.georef_drawing_service.georef.service.port.HashCalculator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,35 +24,56 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class GeorefImageService {
 
+    private static final Logger log = LoggerFactory.getLogger(GeorefImageService.class);
     private final GeorefImageRepository repository;
-    private final StorageConfig storageConfig;
+    private final HashCalculator hashCalculator;
+    private final FileStorageService fileStorageService;
+    private final GeorefImageFactory imageFactory;
+
 
     public GeorefImageDto uploadImage(MultipartFile file) {
         try {
-            String hash = FileUtils.calculateSHA256(file);
+            String mimeType = file.getContentType();
+            if (mimeType == null || !FileStorageService.SUPPORTED_MIME_TYPES.contains(mimeType)) {
+                throw new UnsupportedImageFormatException("Format non supporte : " + mimeType);
+            }
 
-            // Vérifier si une image avec le même hash existe déjà
+            String hash = hashCalculator.calculate(file);
+
             if (repository.existsByHash(hash)) {
+                log.info("Image avec hash {} deja existante. Retour de la version existante.", hash);
                 return GeorefMapper.toDto(repository.findByHash(hash), null, null);
             }
 
-            String filename = hash + "_" + file.getOriginalFilename();
-            Path targetPath = storageConfig.getOriginalDir().resolve(filename);
-            if (!Files.exists(targetPath)) {
-                Files.copy(file.getInputStream(), targetPath);
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                log.error("Nom de fichier original introuvable dans MultipartFile.");
+                throw new ImageUploadException("Nom de fichier manquant dans l'image importee.");
             }
 
-            GeorefImage image = new GeorefImage();
-            image.setFilepathOriginal(targetPath.toString());
-            image.setHash(hash);
-            image.setUploadingDate(LocalDateTime.now());
-            image.setStatus(GeorefStatus.UPLOADED);
+            String filename = hash + "_" + originalFilename;
+            Path storedPath = fileStorageService.exists(filename);
 
-            GeorefImage savedImage = repository.save(image);
-            return GeorefMapper.toDto(savedImage, null, null);
+            if (storedPath == null) {
+                storedPath = fileStorageService.saveOriginalFile(file, filename);
+                log.info("Fichier enregistre sous : {}", storedPath);
+            }
 
+            GeorefImage image = imageFactory.create(hash, storedPath);
+            GeorefImage saved = repository.save(image);
+
+            log.info("Image {} sauvegardee avec succes dans la base.", saved.getId());
+            return GeorefMapper.toDto(saved, null, null);
+
+        } catch (UnsupportedImageFormatException e) {
+            log.error("Format de fichier non supporté : {}", e.getMessage(), e);
+            throw e;
         } catch (IOException e) {
-            throw new ImageUploadException("Impossible d'importer l'image", e);
+            log.error("Erreur IO lors de l'upload de l'image : {}", e.getMessage(), e);
+            throw new ImageUploadException("Erreur lors de l'upload de l'image : " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Erreur inattendue lors de l'importation d'image : {}", e.getMessage(), e);
+            throw new ImageUploadException("Erreur inattendue lors de l'importation de l'image", e);
         }
     }
 
