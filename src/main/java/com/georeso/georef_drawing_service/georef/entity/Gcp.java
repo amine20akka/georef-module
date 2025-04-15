@@ -28,7 +28,5 @@ public class Gcp {
 
     private int index;
 
-    private String color;
-
     private Double residual;
 }
