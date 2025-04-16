@@ -5,12 +5,10 @@ import com.georeso.georef_drawing_service.georef.enums.GeorefStatus;
 import com.georeso.georef_drawing_service.georef.enums.ResamplingMethod;
 import com.georeso.georef_drawing_service.georef.enums.Srid;
 import com.georeso.georef_drawing_service.georef.enums.TransformationType;
-import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
 
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -29,6 +27,4 @@ public class GeorefImageDto {
     private Compression compression;
     private Double meanResidual;
 
-    private List<GcpDto> gcps;
-    private GeorefLayerDto layer;
 }

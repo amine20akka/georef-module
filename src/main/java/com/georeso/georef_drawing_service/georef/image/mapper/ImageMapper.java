@@ -2,14 +2,10 @@ package com.georeso.georef_drawing_service.georef.image.mapper;
 
 import com.georeso.georef_drawing_service.georef.image.dto.*;
 import com.georeso.georef_drawing_service.georef.entity.*;
-import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
-
-import java.util.List;
-
 public class ImageMapper {
 
     // -------- GeorefImage --------
-    public static GeorefImageDto toDto(GeorefImage entity, List<GcpDto> gcpDtos, GeorefLayerDto layerDto) {
+    public static GeorefImageDto toDto(GeorefImage entity) {
         return GeorefImageDto.builder()
                 .id(entity.getId())
                 .hash(entity.getHash())
@@ -23,8 +19,6 @@ public class ImageMapper {
                 .resamplingMethod(entity.getResamplingMethod())
                 .compression(entity.getCompression())
                 .meanResidual(entity.getMeanResidual())
-                .gcps(gcpDtos)
-                .layer(layerDto)
                 .build();
     }
 
