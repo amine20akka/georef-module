@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.georeso.georef_drawing_service.georef.gcp.exceptions.DuplicateGcpIndexException;
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.InvalidGcpException;
 import com.georeso.georef_drawing_service.georef.image.exceptions.ImageUploadException;
@@ -29,6 +30,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleImageNotFoundException(ImageNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                              .body("Image not found: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateGcpIndexException.class)
+    public ResponseEntity<String> handleDuplicateGcpIndexException(DuplicateGcpIndexException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                             .body("Duplicate GCP index: " + ex.getMessage());
     }
 
     @ExceptionHandler(InvalidGcpException.class)
