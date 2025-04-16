@@ -14,20 +14,17 @@ import com.georeso.georef_drawing_service.georef.enums.TransformationType;
 
 @Entity
 @Table(name = "georef_images", schema = "georef")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class GeorefImage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String hash;
 
+    @Column(nullable = false)
     private String filepathOriginal;
 
     private String filepathGeoreferenced;

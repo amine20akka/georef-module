@@ -9,11 +9,7 @@ import lombok.*;
 
 @Entity
 @Table(name = "georef_layers", schema = "georef")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class GeorefLayer {
 
     @Id
