@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +31,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.georeso.georef_drawing_service.georef.image.dto.GeorefImageDto;
 import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
+import com.georeso.georef_drawing_service.georef.enums.Compression;
 import com.georeso.georef_drawing_service.georef.enums.GeorefStatus;
+import com.georeso.georef_drawing_service.georef.enums.ResamplingMethod;
+import com.georeso.georef_drawing_service.georef.enums.Srid;
+import com.georeso.georef_drawing_service.georef.enums.TransformationType;
+import com.georeso.georef_drawing_service.georef.gcp.exceptions.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.image.exceptions.UnsupportedImageFormatException;
 import com.georeso.georef_drawing_service.georef.image.repository.GeorefImageRepository;
 import com.georeso.georef_drawing_service.georef.image.service.port.FileStorageService;
@@ -164,6 +170,58 @@ class GeorefImageServiceTest {
         // WHEN + THEN
         assertThrows(UnsupportedImageFormatException.class,() -> georefImageService.uploadImage(invalidFile));
         verifyNoInteractions(hashCalculator, fileStorageService, georefImageFactory, repository);
+    }
+
+    @Test
+    @DisplayName("doit mettre à jour les paramètres de géoréférencement avec succès")
+    void shouldUpdateGeoreferencingParamsSuccessfully() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        GeorefImageDto dto = new GeorefImageDto();
+        dto.setId(imageId);
+        dto.setTransformationType(TransformationType.POLYNOMIALE_2);
+        dto.setSrid(Srid._4326);
+        dto.setResamplingMethod(ResamplingMethod.NEAREST);
+        dto.setCompression(Compression.LZW);
+
+        GeorefImage existingImage = new GeorefImage();
+        existingImage.setId(imageId);
+        existingImage.setTransformationType(TransformationType.POLYNOMIALE_1);
+        existingImage.setSrid(Srid._3857);
+        existingImage.setResamplingMethod(ResamplingMethod.BILINEAR);
+        existingImage.setCompression(Compression.NONE);
+
+        when(repository.findById(imageId)).thenReturn(Optional.of(existingImage));
+        when(repository.save(existingImage)).thenReturn(existingImage);
+        
+        // WHEN
+        GeorefImageDto updatedDto = georefImageService.updateGeoreferencingParams(dto);
+        
+        // THEN
+        assertNotNull(updatedDto);
+        assertEquals(existingImage.getId(), updatedDto.getId());
+        assertEquals(TransformationType.POLYNOMIALE_2, updatedDto.getTransformationType());
+        assertEquals(Srid._4326, updatedDto.getSrid());
+        assertEquals(ResamplingMethod.NEAREST, updatedDto.getResamplingMethod());
+        assertEquals(Compression.LZW, updatedDto.getCompression());
+        verify(repository, times(1)).findById(imageId);
+        verify(repository, times(1)).save(existingImage);
+    }
+
+    @Test
+    @DisplayName("doit lever une exception ImageNotFoundException si l'image n'existe pas")
+    void shouldThrowImageNotFoundException_WhenImageDoesNotExist() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        GeorefImageDto dto = new GeorefImageDto();
+        dto.setId(imageId);
+
+        when(repository.findById(imageId)).thenReturn(java.util.Optional.empty());
+
+        // WHEN + THEN
+        assertThrows(ImageNotFoundException.class, () -> georefImageService.updateGeoreferencingParams(dto));
+        verify(repository, times(1)).findById(imageId);
+        verify(repository, never()).save(any());
     }
 
 }

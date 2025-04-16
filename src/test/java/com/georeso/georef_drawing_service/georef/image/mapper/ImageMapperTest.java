@@ -3,14 +3,11 @@ package com.georeso.georef_drawing_service.georef.image.mapper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
 import com.georeso.georef_drawing_service.georef.image.dto.GeorefImageDto;
-import com.georeso.georef_drawing_service.georef.image.dto.GeorefLayerDto;
 import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
 import com.georeso.georef_drawing_service.georef.enums.Compression;
 import com.georeso.georef_drawing_service.georef.enums.GeorefStatus;
@@ -38,11 +35,8 @@ public class ImageMapperTest {
         image.setCompression(Compression.LZW);
         image.setMeanResidual(0.5);
 
-        List<GcpDto> gcpDtos = List.of();
-        GeorefLayerDto layerDto = new GeorefLayerDto();
-
         // WHEN
-        GeorefImageDto dto = ImageMapper.toDto(image, gcpDtos, layerDto);
+        GeorefImageDto dto = ImageMapper.toDto(image);
 
         // THEN
         assertEquals(id, dto.getId());
@@ -56,8 +50,6 @@ public class ImageMapperTest {
         assertEquals(TransformationType.POLYNOMIALE_1, dto.getTransformationType());
         assertEquals(Compression.LZW, dto.getCompression());
         assertEquals(0.5, dto.getMeanResidual());
-        assertEquals(gcpDtos, dto.getGcps());
-        assertEquals(layerDto, dto.getLayer());
     }
 
     @Test
@@ -77,8 +69,6 @@ public class ImageMapperTest {
                 .resamplingMethod(ResamplingMethod.NEAREST)
                 .compression(Compression.LZW)
                 .meanResidual(1.2)
-                .gcps(List.of())
-                .layer(new GeorefLayerDto())
                 .build();
 
         // WHEN
