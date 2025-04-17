@@ -1,12 +1,12 @@
 package com.georeso.georef_drawing_service.georef.gcp.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,19 +14,22 @@ import org.springframework.web.bind.annotation.*;
 import com.georeso.georef_drawing_service.georef.exception.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.DuplicateGcpIndexException;
+import com.georeso.georef_drawing_service.georef.gcp.exceptions.GcpNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.service.GcpService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 @RestController
 @RequestMapping("/georef/gcp")
 @RequiredArgsConstructor
-@Tag(name = "GcpController", description = "Controller pour la gestion des GCPs (Ground Control Points)")
+@Slf4j
+@Tag(name = "GCP", description = "API pour la gestion des Ground Control Points")
 public class GcpController {
 
-    private static final Logger log = LoggerFactory.getLogger(GcpController.class);
     private final GcpService gcpService;
 
     @Operation(summary = "Ajouter un GCP", description = "Permet d'ajouter un GCP à une image géoréférencée.", responses = {
@@ -98,4 +101,31 @@ public class GcpController {
         
         }
     }
+
+    @Operation(summary = "Supprimer un GCP par ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "GCP supprimé avec succès"),
+        @ApiResponse(responseCode = "404", description = "GCP non trouvé", content = @Content),
+        @ApiResponse(responseCode = "500", description = "Erreur serveur")
+    })
+    @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<GcpDto>> deleteGcpById(@PathVariable UUID id) {
+        try {
+        
+            List<GcpDto> updatedGcpDtos = gcpService.deleteGcpById(id);
+            return ResponseEntity.status(200).body(updatedGcpDtos);
+        
+        } catch (GcpNotFoundException e) {
+        
+            log.error("Erreur lors de la suppression du GCP : {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        
+        } catch (Exception e) {
+        
+            log.error("Erreur inattendue lors de la suppression du GCP : {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        
+        }
+    }
+
 }

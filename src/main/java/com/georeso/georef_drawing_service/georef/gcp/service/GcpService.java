@@ -11,6 +11,7 @@ import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
 import com.georeso.georef_drawing_service.georef.exception.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.DuplicateGcpIndexException;
+import com.georeso.georef_drawing_service.georef.gcp.exceptions.GcpNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.mapper.GcpMapper;
 import com.georeso.georef_drawing_service.georef.gcp.repository.GcpRepository;
 import com.georeso.georef_drawing_service.georef.image.repository.GeorefImageRepository;
@@ -18,7 +19,6 @@ import com.georeso.georef_drawing_service.georef.image.repository.GeorefImageRep
 import lombok.RequiredArgsConstructor;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class GcpService {
 
@@ -64,6 +64,28 @@ public class GcpService {
                 List<Gcp> gcps = gcpRepository.findByImageId(image.getId());
                 return GcpMapper.toGcpDtoList(gcps);
 
+        }
+
+        @Transactional
+        public List<GcpDto> deleteGcpById(UUID gcpId) {
+                Gcp gcpToDelete = gcpRepository.findById(gcpId)
+                                .orElseThrow(() -> new GcpNotFoundException("GCP non trouvé avec l'id : " + gcpId));
+
+                UUID imageId = gcpToDelete.getImage().getId();
+                int indexToDelete = gcpToDelete.getIndex();
+
+                gcpRepository.delete(gcpToDelete);
+
+                List<Gcp> remainingGcps = gcpRepository.findAllByImageIdOrderByIndex(imageId);
+
+                if (indexToDelete < remainingGcps.size() + 1) {
+                        for (int i = 0; i < remainingGcps.size(); i++) {
+                                remainingGcps.get(i).setIndex(i + 1);
+                        }
+                        remainingGcps = gcpRepository.saveAll(remainingGcps);
+                }
+
+                return GcpMapper.toGcpDtoList(remainingGcps);
         }
 
 }

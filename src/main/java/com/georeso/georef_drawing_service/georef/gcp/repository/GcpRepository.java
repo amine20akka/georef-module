@@ -10,4 +10,5 @@ import com.georeso.georef_drawing_service.georef.entity.Gcp;
 public interface GcpRepository extends JpaRepository<Gcp, UUID> {
     List<Gcp> findByImageId(UUID imageId);
     boolean existsByImageIdAndIndex(UUID imageId, int index);
+    List<Gcp> findAllByImageIdOrderByIndex(UUID imageId);
 }
