@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +27,7 @@ import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
 import com.georeso.georef_drawing_service.georef.exception.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.DuplicateGcpIndexException;
+import com.georeso.georef_drawing_service.georef.gcp.exceptions.GcpNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.mapper.GcpMapper;
 import com.georeso.georef_drawing_service.georef.gcp.repository.GcpRepository;
 import com.georeso.georef_drawing_service.georef.image.repository.GeorefImageRepository;
@@ -104,10 +107,10 @@ class GcpServiceTest {
         UUID imageId = UUID.randomUUID();
         GeorefImage image = new GeorefImage();
         GcpDto addGcpRequest = GcpDto.builder().imageId(imageId).index(1).build();
-        
+
         when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
         when(gcpRepository.existsByImageIdAndIndex(imageId, 1)).thenReturn(true);
-        
+
         // When + Then
         assertThrows(DuplicateGcpIndexException.class, () -> gcpService.addGcp(addGcpRequest));
         verify(gcpRepository, never()).save(any(Gcp.class));
@@ -133,5 +136,100 @@ class GcpServiceTest {
         assertNotNull(gcps);
         assertEquals(1, gcps.size());
         verify(gcpRepository, times(1)).findByImageId(image.getId());
+    }
+
+    @Test
+    @DisplayName("doit supprimer le dernier GCP sans réindexer les GCPs restants")
+    void shouldDeleteGcpWithoutReindexing_WhenDeletingLastGcp() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        UUID gcpIdToDelete = UUID.randomUUID();
+
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+
+        Gcp gcpToDelete = new Gcp();
+        gcpToDelete.setId(gcpIdToDelete);
+        gcpToDelete.setImage(image);
+        gcpToDelete.setIndex(3);
+
+        Gcp gcp1 = new Gcp();
+        gcp1.setId(UUID.randomUUID());
+        gcp1.setImage(image);
+        gcp1.setIndex(1);
+        Gcp gcp2 = new Gcp();
+        gcp2.setId(UUID.randomUUID());
+        gcp2.setImage(image);
+        gcp2.setIndex(2);
+
+        image.setGcps(List.of(gcp1, gcp2, gcpToDelete));
+
+        when(gcpRepository.findById(gcpIdToDelete)).thenReturn(Optional.of(gcpToDelete));
+        when(gcpRepository.findAllByImageIdOrderByIndex(imageId)).thenReturn(List.of(gcp1, gcp2));
+
+        // WHEN
+        gcpService.deleteGcpById(gcpIdToDelete);
+
+        // THEN
+        verify(gcpRepository, times(1)).delete(gcpToDelete);
+        verify(gcpRepository, never()).saveAll(anyList());
+
+        assertEquals(1, gcp1.getIndex());
+        assertEquals(2, gcp2.getIndex());
+    }
+
+    @Test
+    @DisplayName("doit supprimer le GCP et réindexer les GCPs restants")
+    void shouldDeleteGcpAndReindexing_WhenDeletingGcpIsNotLast() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        UUID gcpIdToDelete = UUID.randomUUID();
+
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+
+        Gcp gcpToDelete = new Gcp();
+        gcpToDelete.setId(gcpIdToDelete);
+        gcpToDelete.setImage(image);
+        gcpToDelete.setIndex(2);
+
+        Gcp gcp1 = new Gcp();
+        gcp1.setId(UUID.randomUUID());
+        gcp1.setImage(image);
+        gcp1.setIndex(1);
+        Gcp gcp3 = new Gcp();
+        gcp3.setId(UUID.randomUUID());
+        gcp3.setImage(image);
+        gcp3.setIndex(3);
+
+        image.setGcps(List.of(gcp1, gcp3, gcpToDelete));
+
+        when(gcpRepository.findById(gcpIdToDelete)).thenReturn(Optional.of(gcpToDelete));
+        when(gcpRepository.findAllByImageIdOrderByIndex(imageId)).thenReturn(List.of(gcp1, gcp3));
+
+        // WHEN
+        gcpService.deleteGcpById(gcpIdToDelete);
+
+        // THEN
+        verify(gcpRepository, times(1)).delete(gcpToDelete);
+        verify(gcpRepository, times(1)).saveAll(anyList());
+
+        assertEquals(1, gcp1.getIndex());
+        assertEquals(2, gcp3.getIndex());
+    }
+
+    @Test
+    @DisplayName("doit lever GcpNotFoundException si GCP non trouvé")
+    void shouldThrowExceptionWhenGcpNotFound() {
+        // GIVEN
+        UUID id = UUID.randomUUID();
+        when(gcpRepository.findById(id)).thenReturn(Optional.empty());
+
+        // WHEN + THEN
+        assertThrows(GcpNotFoundException.class, () -> gcpService.deleteGcpById(id));
+        verify(gcpRepository, times(1)).findById(id);
+        verify(gcpRepository, never()).delete(any(Gcp.class));
+        verify(gcpRepository, never()).findAllByImageIdOrderByIndex(any(UUID.class));
+        verify(gcpRepository, never()).saveAll(anyList());
     }
 }
