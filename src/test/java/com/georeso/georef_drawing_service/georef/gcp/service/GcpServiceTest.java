@@ -22,9 +22,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.georeso.georef_drawing_service.georef.entity.Gcp;
 import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
+import com.georeso.georef_drawing_service.georef.exception.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.DuplicateGcpIndexException;
-import com.georeso.georef_drawing_service.georef.gcp.exceptions.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.mapper.GcpMapper;
 import com.georeso.georef_drawing_service.georef.gcp.repository.GcpRepository;
 import com.georeso.georef_drawing_service.georef.image.repository.GeorefImageRepository;

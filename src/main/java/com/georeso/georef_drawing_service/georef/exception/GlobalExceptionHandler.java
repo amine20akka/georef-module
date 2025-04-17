@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.DuplicateGcpIndexException;
-import com.georeso.georef_drawing_service.georef.gcp.exceptions.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.image.exceptions.UnsupportedImageFormatException;
 
 @RestControllerAdvice
