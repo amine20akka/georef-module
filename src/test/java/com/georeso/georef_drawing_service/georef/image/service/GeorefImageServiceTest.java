@@ -36,7 +36,7 @@ import com.georeso.georef_drawing_service.georef.enums.GeorefStatus;
 import com.georeso.georef_drawing_service.georef.enums.ResamplingMethod;
 import com.georeso.georef_drawing_service.georef.enums.Srid;
 import com.georeso.georef_drawing_service.georef.enums.TransformationType;
-import com.georeso.georef_drawing_service.georef.gcp.exceptions.ImageNotFoundException;
+import com.georeso.georef_drawing_service.georef.exception.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.image.exceptions.UnsupportedImageFormatException;
 import com.georeso.georef_drawing_service.georef.image.repository.GeorefImageRepository;
 import com.georeso.georef_drawing_service.georef.image.service.port.FileStorageService;
@@ -168,7 +168,7 @@ class GeorefImageServiceTest {
         MultipartFile invalidFile = new MockMultipartFile("file", "test." + mimeType.split("/")[1], mimeType, content);
 
         // WHEN + THEN
-        assertThrows(UnsupportedImageFormatException.class,() -> georefImageService.uploadImage(invalidFile));
+        assertThrows(UnsupportedImageFormatException.class, () -> georefImageService.uploadImage(invalidFile));
         verifyNoInteractions(hashCalculator, fileStorageService, georefImageFactory, repository);
     }
 
@@ -193,10 +193,10 @@ class GeorefImageServiceTest {
 
         when(repository.findById(imageId)).thenReturn(Optional.of(existingImage));
         when(repository.save(existingImage)).thenReturn(existingImage);
-        
+
         // WHEN
         GeorefImageDto updatedDto = georefImageService.updateGeoreferencingParams(dto);
-        
+
         // THEN
         assertNotNull(updatedDto);
         assertEquals(existingImage.getId(), updatedDto.getId());
@@ -209,8 +209,8 @@ class GeorefImageServiceTest {
     }
 
     @Test
-    @DisplayName("doit lever une exception ImageNotFoundException si l'image n'existe pas")
-    void shouldThrowImageNotFoundException_WhenImageDoesNotExist() {
+    @DisplayName("doit lever ImageNotFoundException dans updateGeoreferencingParams si image non trouvée")
+    void shouldThrowException_WhenUpdatingImageThatDoesNotExist() {
         // GIVEN
         UUID imageId = UUID.randomUUID();
         GeorefImageDto dto = new GeorefImageDto();
@@ -222,6 +222,35 @@ class GeorefImageServiceTest {
         assertThrows(ImageNotFoundException.class, () -> georefImageService.updateGeoreferencingParams(dto));
         verify(repository, times(1)).findById(imageId);
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldDeleteImageSuccessfully() {
+        // GIVEN
+        UUID id = UUID.randomUUID();
+        GeorefImage image = new GeorefImage();
+        image.setId(id);
+
+        when(repository.findById(id)).thenReturn(Optional.of(image));
+
+        // WHEN
+        georefImageService.deleteImageById(id);
+
+        // THEN
+        verify(repository).delete(image);
+    }
+
+    @Test
+    @DisplayName("doit lever ImageNotFoundException dans deleteImageById si image non trouvée")
+    void shouldThrowException_WhenDeletingImageThatDoesNotExist() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+
+        when(repository.findById(imageId)).thenReturn(Optional.empty());
+
+        // WHEN + THEN
+        assertThrows(ImageNotFoundException.class, () -> georefImageService.deleteImageById(imageId));
+        verify(repository).findById(imageId);
     }
 
 }

@@ -11,9 +11,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.georeso.georef_drawing_service.georef.exception.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.dto.GcpDto;
 import com.georeso.georef_drawing_service.georef.gcp.exceptions.DuplicateGcpIndexException;
-import com.georeso.georef_drawing_service.georef.gcp.exceptions.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.gcp.service.GcpService;
 
 import io.swagger.v3.oas.annotations.Operation;

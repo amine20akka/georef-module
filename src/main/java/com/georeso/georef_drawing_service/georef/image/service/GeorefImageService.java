@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.georeso.georef_drawing_service.georef.entity.GeorefImage;
-import com.georeso.georef_drawing_service.georef.gcp.exceptions.ImageNotFoundException;
+import com.georeso.georef_drawing_service.georef.exception.ImageNotFoundException;
 import com.georeso.georef_drawing_service.georef.image.dto.GeorefImageDto;
 import com.georeso.georef_drawing_service.georef.image.exceptions.UnsupportedImageFormatException;
 import com.georeso.georef_drawing_service.georef.image.mapper.ImageMapper;
@@ -76,4 +76,9 @@ public class GeorefImageService {
         return ImageMapper.toDto(updated);
     }
 
+    public void deleteImageById(UUID id) {
+        GeorefImage image = repository.findById(id)
+            .orElseThrow(() -> new ImageNotFoundException("Image introuvable avec l'id " + id));
+        repository.delete(image);
+    }
 }
