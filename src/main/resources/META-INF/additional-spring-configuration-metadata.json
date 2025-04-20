@@ -1,0 +1,17 @@
+{"properties": [
+  {
+    "name": "georef.storage.base-path",
+    "type": "java.lang.String",
+    "description": "The base path for the storage of images."
+  },
+  {
+    "name": "georef.storage.original-dir",
+    "type": "java.lang.String",
+    "description": "The directory for storing original images."
+  },
+  {
+    "name": "georef.storage.georeferenced-dir",
+    "type": "java.lang.String",
+    "description": "The directory for storing georeferenced images."
+  }
+]}
