@@ -113,6 +113,7 @@ public class GcpController {
         try {
         
             List<GcpDto> updatedGcpDtos = gcpService.deleteGcpById(id);
+            log.info("GCP supprimé avec succès : {}", id);
             return ResponseEntity.status(200).body(updatedGcpDtos);
         
         } catch (GcpNotFoundException e) {

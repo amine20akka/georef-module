@@ -1,12 +1,16 @@
 package com.amine.pfe.georef_module.image.controller;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,6 +24,7 @@ import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.image.dto.GeorefImageDto;
 import com.amine.pfe.georef_module.image.exceptions.UnsupportedImageFormatException;
 import com.amine.pfe.georef_module.image.service.GeorefImageService;
+import com.amine.pfe.georef_module.image.service.port.FileStorageService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 public class GeorefImageController {
 
     private final GeorefImageService imageService;
+    private final FileStorageService fileStorageService;
 
     @Operation(summary = "Importer une image raster", description = "Permet d'importer une image à géoréférencer. Le fichier doit être au format PNG, JPEG ou TIFF.", responses = {
             @ApiResponse(responseCode = "200", description = "Image importée avec succès", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
@@ -109,24 +115,86 @@ public class GeorefImageController {
             @ApiResponse(responseCode = "500", description = "Erreur serveur")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteImage(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteImageById(@PathVariable UUID id) {
         try {
 
             imageService.deleteImageById(id);
             log.info("Image supprimée avec succès, id={}", id);
             return ResponseEntity.noContent().build();
-        
+
         } catch (ImageNotFoundException ex) {
-        
+
             log.warn("Tentative de suppression d'une image inexistante, id={}", id);
             throw ex;
-        
+
         } catch (Exception ex) {
-        
+
             log.error("Erreur lors de la suppression de l'image, id={}, erreur={}", id, ex.getMessage(), ex);
             throw new RuntimeException("Erreur interne lors de la suppression de l'image");
-        
+
         }
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Récupérer une image", description = "Retourne l'image par son ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Image trouvée"),
+            @ApiResponse(responseCode = "404", description = "Aucune image trouvée"),
+            @ApiResponse(responseCode = "500", description = "Erreur serveur")
+    })
+    public ResponseEntity<GeorefImageDto> getImageById(@PathVariable UUID id) {
+        try {
+
+            GeorefImageDto dto = imageService.getImageById(id);
+            log.info("Image trouvée avec succès : {}", dto);
+            return ResponseEntity.ok(dto);
+
+        } catch (ImageNotFoundException e) {
+
+            log.warn("Aucune image trouvée : {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
+        } catch (Exception e) {
+
+            log.error("Erreur inattendue lors de la récupération de l'image : {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+
+        }
+    }
+
+    @Operation(summary = "Récupérer le fichier d'une image", description = "Retourne le fichier de l'image par son ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Fichier trouvé"),
+            @ApiResponse(responseCode = "404", description = "Aucun fichier trouvé"),
+            @ApiResponse(responseCode = "500", description = "Erreur serveur")
+    })
+    @GetMapping("/{id}/file")
+    public ResponseEntity<FileSystemResource> getImageFile(@PathVariable UUID id) throws IOException {
+        try {
+            
+            File file = imageService.loadOriginalImageById(id);
+            log.info("Fichier de l'image récupéré avec succès : {}", file.getCanonicalPath());
+            FileSystemResource resource = new FileSystemResource(file);
+            return ResponseEntity.ok()
+                    .contentType(fileStorageService.detectMediaType(file.getName()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getName() + "\"")
+                    .body(resource);
+
+        } catch (IllegalArgumentException e) {
+            
+            log.error("L'ID de l'image ne peut pas être nul : {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+
+        } catch (ImageNotFoundException e) {
+            
+            log.error("Image introuvable avec l'ID : {}", id, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
+        } catch (Exception e) {
+            
+            log.error("Erreur lors de la récupération du fichier de l'image : {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        
+        }
+    }
 }
