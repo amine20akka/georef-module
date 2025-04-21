@@ -1,11 +1,33 @@
 package com.amine.pfe.georef_module.enums;
 
-public enum Srid {
-    // _4326, 
-    _3857;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonValue;
 
-    @Override
-    public String toString() {
-        return this.name();
+@JsonFormat(shape = JsonFormat.Shape.NUMBER)
+public enum Srid {
+    // _4326(4326),
+    _3857(3857);
+
+    private final int code;
+
+    Srid(int code) {
+        this.code = code;
+    }
+
+    @JsonValue
+    public int getCode() {
+        return code;
+    }
+
+    @JsonCreator
+    public static Srid fromCode(int code) {
+        for (Srid s : values()) {
+            if (s.code == code) {
+                return s;
+            }
+        }
+        throw new IllegalArgumentException("Unknown SRID: " + code);
     }
 }
+

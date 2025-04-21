@@ -9,9 +9,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -101,7 +105,7 @@ class GeorefImageServiceTest {
         assertNotNull(result);
         assertEquals(hash, result.getHash());
         assertEquals(imageId, result.getId());
-        assertEquals(mockPath.toString(), result.getFilepathOriginal());
+        assertEquals(file.getOriginalFilename(), result.getFilepathOriginal());
         assertEquals(GeorefStatus.UPLOADED, result.getStatus());
 
         verify(hashCalculator, times(1)).calculate(file);
@@ -140,7 +144,7 @@ class GeorefImageServiceTest {
         assertNotNull(result);
         assertEquals(imageId, result.getId());
         assertEquals(hash, result.getHash());
-        assertEquals(path, result.getFilepathOriginal());
+        assertEquals(file.getOriginalFilename(), result.getFilepathOriginal());
         assertEquals(GeorefStatus.UPLOADED, result.getStatus());
         assertTrue(result.getUploadingDate().isBefore(LocalDateTime.now()));
 
@@ -174,7 +178,7 @@ class GeorefImageServiceTest {
 
     @Test
     @DisplayName("doit mettre à jour les paramètres de géoréférencement avec succès")
-    void shouldUpdateGeoreferencingParamsSuccessfully() {
+    void shouldUpdateGeoreferencingParamsSuccessfully() throws IOException {
         // GIVEN
         UUID imageId = UUID.randomUUID();
         GeorefImageDto dto = new GeorefImageDto();
@@ -231,7 +235,7 @@ class GeorefImageServiceTest {
         GeorefImage image = new GeorefImage();
         image.setId(id);
 
-        when(repository.findById(id)).thenReturn(Optional.of(image));  
+        when(repository.findById(id)).thenReturn(Optional.of(image));
 
         // WHEN
         georefImageService.deleteImageById(id);
@@ -251,6 +255,139 @@ class GeorefImageServiceTest {
         // WHEN + THEN
         assertThrows(ImageNotFoundException.class, () -> georefImageService.deleteImageById(imageId));
         verify(repository).findById(imageId);
+    }
+
+    @Test
+    @DisplayName("doit retourner l'image avec succès")
+    void shouldGetImageSuccessfully() throws Exception {
+        // GIVEN
+        byte[] content = "image content".getBytes(StandardCharsets.UTF_8);
+        MultipartFile file = new MockMultipartFile("file", "mock.jpg", "image/png", content);
+
+        String hash = "1a9e46aa05d390aa48745d4bda80a459e850c4b048af0c0faec37d9a2f080abb";
+        String filename = hash.concat("_").concat(file.getOriginalFilename());
+        UUID imageId = UUID.randomUUID();
+        Path mockPath = Paths.get("georef-storage", "originals", filename);
+
+        GeorefImage savedImage = new GeorefImage();
+        savedImage.setId(imageId);
+        savedImage.setHash(hash);
+        savedImage.setFilepathOriginal(mockPath.toString());
+
+        when(repository.findById(imageId)).thenReturn(Optional.of(savedImage));
+        when(fileStorageService.removeHashFromFilePath(savedImage.getFilepathOriginal())).thenReturn(file.getOriginalFilename());
+        when(fileStorageService.exists(file.getOriginalFilename())).thenReturn(mockPath);
+        
+        // WHEN
+        GeorefImageDto result = georefImageService.getImageById(imageId);
+        
+        // THEN
+        assertNotNull(result);
+        assertEquals(imageId, result.getId());
+        assertEquals(hash, result.getHash());
+        assertEquals(file.getOriginalFilename(), result.getFilepathOriginal());
+    }
+
+    @Test
+    @DisplayName("doit lever IllegalArgumentException dans getImageById si l'id est nul")
+    void shouldThrowIllegalArgumentException_WhenImageIdIsNull() {
+        // GIVEN
+        UUID id = null;
+
+        // WHEN + THEN
+        assertThrows(IllegalArgumentException.class, () -> georefImageService.getImageById(id));
+        verifyNoInteractions(repository, fileStorageService);
+    }
+
+    @Test
+    @DisplayName("doit lever ImageNotFoundException dans getImageById si image non trouvée dans la base")
+    void shouldThrowImageNotFoundException_WhenGettingImageThatDoesNotExist() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+
+        when(repository.findById(imageId)).thenReturn(Optional.empty());
+
+        // WHEN + THEN
+        assertThrows(ImageNotFoundException.class, () -> georefImageService.getImageById(imageId));
+        verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    @DisplayName("doit lever ImageNotFoundException dans getImageById si le fichier de l'image non trouvé")
+    void shouldThrowImageNotFoundException_WhenImageFileDoesNotExist() throws Exception {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        String filename = "mock.jpg";
+        String hash = "1a9e46aa05d390aa48745d4bda80a459e850c4b048af0c0faec37d9a2f080abb";
+        String filepath = Paths.get("georef-storage", "originals", hash.concat("_").concat(filename)).toString();
+
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+        image.setHash(hash);
+        image.setFilepathOriginal(filepath);
+
+        when(repository.findById(imageId)).thenReturn(Optional.of(image));
+        when(fileStorageService.removeHashFromFilePath(image.getFilepathOriginal())).thenReturn(filename);
+        when(fileStorageService.exists(filename)).thenReturn(null);
+
+        // WHEN + THEN
+        assertThrows(ImageNotFoundException.class, () -> georefImageService.getImageById(imageId));
+        verifyNoMoreInteractions(fileStorageService);
+    }
+
+    @Test
+    @DisplayName("doit retourner le fichier de l'image avec succès")
+    void shouldReturnImageFileSuccessfully_whenImageExists() throws Exception {
+        // GIVEN
+        byte[] fileContent = "dummy image content".getBytes(StandardCharsets.UTF_8);
+
+        File tempFile = File.createTempFile("mock", ".jpg");
+        Files.write(tempFile.toPath(), fileContent);
+
+        String hash = "1a9e46aa05d390aa48745d4bda80a459e850c4b048af0c0faec37d9a2f080abb";
+        String filename = hash.concat("_").concat(tempFile.getName());
+        UUID imageId = UUID.randomUUID();
+        Path mockPath = Paths.get("georef-storage", "originals", filename);
+
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+        image.setFilepathOriginal(mockPath.toString());
+
+        when(repository.findById(imageId)).thenReturn(Optional.of(image));
+        when(fileStorageService.getFileByOriginalFilePath(image.getFilepathOriginal())).thenReturn(tempFile);        
+
+        // WHEN
+        File result = georefImageService.loadOriginalImageById(imageId);
+
+        // THEN
+        assertNotNull(result);
+        assertEquals(tempFile.getName(), result.getName());
+        assertEquals(fileContent.length, result.length());
+        assertEquals(tempFile, result);
+    }
+
+    @Test
+    @DisplayName("doit lever ImageNotFoundException si l'image n'existe pas")
+    void shouldThrowImageNotFoundException_whenGettingFileFromImageThatDoesNotExist() throws Exception {
+        // GIVEN
+        UUID id = UUID.randomUUID();
+
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        // WHEN + THEN
+        assertThrows(ImageNotFoundException.class, () -> georefImageService.loadOriginalImageById(id));
+        verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    @DisplayName("doit lever IllegalArgumentException si l'id de l'image est nul")
+    void shouldThrowIllegalArgumentException_whenImageIdIsNull() {
+        // GIVEN
+        UUID id = null;
+        
+        // WHEN + THEN
+        assertThrows(IllegalArgumentException.class, () -> georefImageService.loadOriginalImageById(id));
+        verifyNoInteractions(repository, fileStorageService);
     }
 
 }
