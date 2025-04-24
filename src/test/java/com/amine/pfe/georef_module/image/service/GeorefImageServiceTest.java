@@ -95,7 +95,7 @@ class GeorefImageServiceTest {
         when(hashCalculator.calculate(file)).thenReturn(hash);
         when(repository.existsByHash(hash)).thenReturn(false);
         when(fileStorageService.saveOriginalFile(file, filename)).thenReturn(mockPath);
-        when(georefImageFactory.create(hash, mockPath)).thenReturn(imageToSave);
+        when(georefImageFactory.create(hash, mockPath, file.getOriginalFilename())).thenReturn(imageToSave);
         when(repository.save(imageToSave)).thenReturn(savedImage);
 
         // WHEN
@@ -151,7 +151,7 @@ class GeorefImageServiceTest {
         verify(hashCalculator, times(1)).calculate(file);
         verify(repository, never()).save(any());
         verify(fileStorageService, never()).saveOriginalFile(any(), any());
-        verify(georefImageFactory, never()).create(any(), any());
+        verify(georefImageFactory, never()).create(any(), any(), any());
     }
 
     // Test pour un type d'image non supporté

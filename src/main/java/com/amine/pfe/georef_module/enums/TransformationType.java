@@ -30,4 +30,8 @@ public enum TransformationType {
         }
         throw new IllegalArgumentException("Unknown transformation type: " + label);
     }
+
+    public static TransformationType getDefault() {
+        return TransformationType.POLYNOMIALE_1;
+    }
 }

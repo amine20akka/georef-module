@@ -31,5 +31,9 @@ public enum Compression {
         }
         throw new IllegalArgumentException("Unknown compression: " + label);
     }
+
+    public static Compression getDefault() {
+        return Compression.NONE;
+    }
 }
 

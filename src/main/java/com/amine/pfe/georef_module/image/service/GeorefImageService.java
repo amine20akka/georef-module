@@ -17,6 +17,7 @@ import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
 import com.amine.pfe.georef_module.image.service.port.FileStorageService;
 import com.amine.pfe.georef_module.image.service.port.GeorefImageFactory;
 import com.amine.pfe.georef_module.image.service.port.HashCalculator;
+import com.amine.pfe.georef_module.image.util.FileUtils;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +55,7 @@ public class GeorefImageService {
         Path storedPath = fileStorageService.exists(filename);
         storedPath = fileStorageService.saveOriginalFile(file, filename);
 
-        GeorefImage image = imageFactory.create(hash, storedPath);
+        GeorefImage image = imageFactory.create(hash, storedPath, originalFilename);
         GeorefImage saved = repository.save(image);
 
         GeorefImageDto savedDto = ImageMapper.toDto(saved);
@@ -68,10 +69,13 @@ public class GeorefImageService {
         GeorefImage image = repository.findById(imageId)
                 .orElseThrow(() -> new ImageNotFoundException("Image avec l'ID " + imageId + " non trouvée."));
 
+        String normalizedOutputFilename = FileUtils.normalizeOutputFilename(dto.getOutputFilename(), dto.getOutputFilename());
+
         image.setTransformationType(dto.getTransformationType());
         image.setSrid(dto.getSrid());
         image.setResamplingMethod(dto.getResamplingMethod());
         image.setCompression(dto.getCompression());
+        image.setOutputFilename(normalizedOutputFilename);
 
         GeorefImage updated = repository.save(image);
         fileStorageService.removeHashFromFilePath(updated.getFilepathOriginal());

@@ -29,6 +29,8 @@ public class GeorefImage {
 
     private String filepathGeoreferenced;
 
+    private String outputFilename;
+
     private LocalDateTime uploadingDate;
 
     private LocalDateTime lastGeoreferencingDate;

@@ -18,6 +18,7 @@ public class GeorefImageDto {
     private String hash;
     private String filepathOriginal;
     private String filepathGeoreferenced;
+    private String outputFilename;
     private LocalDateTime uploadingDate;
     private LocalDateTime lastGeoreferencingDate;
     private TransformationType transformationType;

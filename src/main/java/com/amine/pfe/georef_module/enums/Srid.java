@@ -29,5 +29,9 @@ public enum Srid {
         }
         throw new IllegalArgumentException("Unknown SRID: " + code);
     }
+
+    public static Srid getDefault() {
+        return Srid._3857;
+    }
 }
 

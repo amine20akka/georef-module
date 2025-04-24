@@ -11,6 +11,7 @@ public class ImageMapper {
                 .hash(entity.getHash())
                 .filepathOriginal(entity.getFilepathOriginal())
                 .filepathGeoreferenced(entity.getFilepathGeoreferenced())
+                .outputFilename(entity.getOutputFilename())
                 .uploadingDate(entity.getUploadingDate())
                 .lastGeoreferencingDate(entity.getLastGeoreferencingDate())
                 .transformationType(entity.getTransformationType())

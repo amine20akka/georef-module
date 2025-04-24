@@ -30,5 +30,9 @@ public enum ResamplingMethod {
         }
         throw new IllegalArgumentException("Unknown resampling method: " + label);
     }
+
+    public static ResamplingMethod getDefault() {
+        return ResamplingMethod.NEAREST;
+    }
 }
 
