@@ -49,6 +49,7 @@ class GcpServiceTest {
     private GcpService gcpService;
 
     @Test
+    @DisplayName("should add GCP successfully")
     void shouldAddGcpSuccessfully() {
         // Given
         UUID imageId = UUID.randomUUID();
@@ -83,6 +84,7 @@ class GcpServiceTest {
     }
 
     @Test
+    @DisplayName("should throw when imageId is null")
     void shouldThrowWhenImageIdIsNull() {
         // Given
         GcpDto addGcpRequest = GcpDto.builder().imageId(null).build();
@@ -95,6 +97,7 @@ class GcpServiceTest {
     }
 
     @Test
+    @DisplayName("should throw when image not found")
     void shouldThrowWhenImageNotFound() {
         // Given
         UUID imageId = UUID.randomUUID();
@@ -109,6 +112,7 @@ class GcpServiceTest {
     }
 
     @Test
+    @DisplayName("should throw when duplicate index by image")
     void shouldThrowWhenDuplicateIndexByImage() {
         // Given
         UUID imageId = UUID.randomUUID();
@@ -124,6 +128,7 @@ class GcpServiceTest {
     }
 
     @Test
+    @DisplayName("should get GCPs by image ID successfully")
     void shouldGetGcpsByImageIdSuccessfully() {
         // Given
         GeorefImage image = new GeorefImage();
@@ -238,5 +243,81 @@ class GcpServiceTest {
         verify(gcpRepository, never()).delete(any(Gcp.class));
         verify(gcpRepository, never()).findAllByImageIdOrderByIndex(any(UUID.class));
         verify(gcpRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("should update GCP successfully")
+    void updateGcpSuccessfully() {
+        // GIVEN
+        UUID gcpId = UUID.randomUUID();
+        UUID imageId = UUID.randomUUID();
+
+        Gcp existingGcp = new Gcp();
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+        existingGcp.setId(gcpId);
+        existingGcp.setImage(image);
+        existingGcp.setIndex(2);
+        existingGcp.setSourceX(50);
+        existingGcp.setSourceY(100);
+        existingGcp.setMapX(5.0);
+        existingGcp.setMapY(10.0);
+
+        GcpDto incomingDto = new GcpDto();
+        incomingDto.setId(gcpId);
+        incomingDto.setImageId(imageId);
+        incomingDto.setSourceX(100);
+        incomingDto.setSourceY(200);
+        incomingDto.setMapX(10.0);
+        incomingDto.setMapY(20.0);
+        incomingDto.setIndex(2);
+
+        Gcp updatedGcp = GcpMapper.toEntity(incomingDto, image);
+
+        when(gcpRepository.findById(gcpId)).thenReturn(Optional.of(existingGcp));
+        when(gcpRepository.save(existingGcp)).thenReturn(updatedGcp);
+
+        // WHEN
+        GcpDto result = gcpService.updateGcp(incomingDto);
+
+        // THEN
+        assertEquals(result.getId(), gcpId);
+        assertEquals(result.getSourceX(), incomingDto.getSourceX());
+        assertEquals(result.getSourceY(), incomingDto.getSourceY());
+        assertEquals(result.getMapX(), incomingDto.getMapX());
+        assertEquals(result.getMapY(), incomingDto.getMapY());
+        assertEquals(result.getIndex(), incomingDto.getIndex());
+        assertEquals(result.getImageId(), imageId);
+        verify(gcpRepository).findById(gcpId);
+        verify(gcpRepository).save(existingGcp);
+    }
+
+    @Test
+    @DisplayName("should throw GcpNotFoundException when GCP not found")
+    void shouldThrowGcpNotFoundException_WhenUpdatingGcp() {
+        // GIVEN
+        UUID gcpId = UUID.randomUUID();
+        GcpDto incomingDto = new GcpDto();
+        incomingDto.setId(gcpId);
+
+        when(gcpRepository.findById(gcpId)).thenReturn(Optional.empty());
+
+        // WHEN + THEN
+        assertThrows(GcpNotFoundException.class, () -> gcpService.updateGcp(incomingDto));
+        assertNotNull(incomingDto.getId());
+        verify(gcpRepository, never()).save(any(Gcp.class));
+    }
+
+    @Test
+    @DisplayName("should throw IllegalArgumentException when GCP ID is null")
+    void shouldThrowIllegalArgumentException_WhenUpdatingGcp() {
+        // GIVEN
+        UUID gcpId = null;
+        GcpDto incomingDto = new GcpDto();
+        incomingDto.setId(gcpId);
+
+        // WHEN + THEN
+        assertThrows(IllegalArgumentException.class, () -> gcpService.updateGcp(incomingDto));
+        verifyNoInteractions(gcpRepository);
     }
 }
