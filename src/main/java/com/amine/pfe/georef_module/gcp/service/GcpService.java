@@ -14,6 +14,7 @@ import com.amine.pfe.georef_module.gcp.exceptions.DuplicateGcpIndexException;
 import com.amine.pfe.georef_module.gcp.exceptions.GcpNotFoundException;
 import com.amine.pfe.georef_module.gcp.mapper.GcpMapper;
 import com.amine.pfe.georef_module.gcp.repository.GcpRepository;
+import com.amine.pfe.georef_module.gcp.service.port.GcpFactory;
 import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class GcpService {
 
         private final GcpRepository gcpRepository;
         private final GeorefImageRepository imageRepository;
+        private final GcpFactory gcpFactory;
 
         public GcpDto addGcp(GcpDto gcpDto) {
 
@@ -38,15 +40,23 @@ public class GcpService {
                                                         "Image avec l'ID " + imageId + " introuvable.");
                                 });
 
-                if (gcpRepository.existsByImageIdAndIndex(imageId, gcpDto.getIndex())) {
+                Integer nextIndex = gcpRepository.findMaxIndexByImageId(imageId)
+                                .map(maxIndex -> maxIndex + 1)
+                                .orElse(1);
+
+                if (gcpRepository.existsByImageIdAndIndex(imageId, nextIndex)) {
                         throw new DuplicateGcpIndexException("Un GCP avec ce même index existe déjà pour cette image.");
                 }
 
-                Gcp gcp = GcpMapper.toEntity(gcpDto, image);
+                Gcp gcp = gcpFactory.createGcp(image,
+                                gcpDto.getSourceX(),
+                                gcpDto.getSourceY(),
+                                gcpDto.getMapX(),
+                                gcpDto.getMapY(),
+                                nextIndex);
+
                 Gcp saved = gcpRepository.save(gcp);
-
                 return GcpMapper.toDto(saved);
-
         }
 
         public List<GcpDto> getGcpsByImageId(UUID imageId) {

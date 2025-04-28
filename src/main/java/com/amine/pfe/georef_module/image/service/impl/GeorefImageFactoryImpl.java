@@ -15,7 +15,7 @@ import com.amine.pfe.georef_module.image.service.port.GeorefImageFactory;
 import com.amine.pfe.georef_module.image.util.FileUtils;
 
 @Component
-public class DefaultGeorefImageFactory implements GeorefImageFactory {
+public class GeorefImageFactoryImpl implements GeorefImageFactory {
     @Override
     public GeorefImage create(String hash, Path path, String originalFilename) {
         String outputFilename = FileUtils.normalizeOutputFilename(originalFilename, originalFilename);

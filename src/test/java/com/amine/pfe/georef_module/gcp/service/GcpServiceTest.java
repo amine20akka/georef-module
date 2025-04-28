@@ -30,6 +30,7 @@ import com.amine.pfe.georef_module.gcp.exceptions.DuplicateGcpIndexException;
 import com.amine.pfe.georef_module.gcp.exceptions.GcpNotFoundException;
 import com.amine.pfe.georef_module.gcp.mapper.GcpMapper;
 import com.amine.pfe.georef_module.gcp.repository.GcpRepository;
+import com.amine.pfe.georef_module.gcp.service.port.GcpFactory;
 import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +41,9 @@ class GcpServiceTest {
 
     @Mock
     private GeorefImageRepository imageRepository;
+
+    @Mock
+    private GcpFactory gcpFactory;
 
     @InjectMocks
     private GcpService gcpService;
@@ -56,13 +60,16 @@ class GcpServiceTest {
                 .mapX(100.0)
                 .mapY(200.0)
                 .index(2)
-                .residual(0.5)
                 .build();
 
         GeorefImage image = new GeorefImage();
         Gcp savedGcp = GcpMapper.toEntity(addGcpRequest, image);
 
         when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
+        when(gcpRepository.findMaxIndexByImageId(imageId)).thenReturn(Optional.of(1));
+        when(gcpRepository.existsByImageIdAndIndex(imageId, 2)).thenReturn(false);
+        when(gcpFactory.createGcp(image, 10, 20, 100.0, 200.0, 2))
+                .thenReturn(savedGcp);
         when(gcpRepository.save(any(Gcp.class))).thenReturn(savedGcp);
 
         // When
