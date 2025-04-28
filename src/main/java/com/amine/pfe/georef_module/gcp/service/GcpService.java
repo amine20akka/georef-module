@@ -98,4 +98,21 @@ public class GcpService {
                 return GcpMapper.toGcpDtoList(remainingGcps);
         }
 
+        public GcpDto updateGcp(GcpDto gcpDto) {
+                if (gcpDto.getId() == null) {
+                        throw new IllegalArgumentException("GCP ID cannot be null.");
+                }
+
+                Gcp gcpToUpdate = gcpRepository.findById(gcpDto.getId())
+                                .orElseThrow(() -> new GcpNotFoundException(
+                                                "GCP not found : " + gcpDto.getId()));
+
+                gcpToUpdate.setSourceX(gcpDto.getSourceX());
+                gcpToUpdate.setSourceY(gcpDto.getSourceY());
+                gcpToUpdate.setMapX(gcpDto.getMapX());
+                gcpToUpdate.setMapY(gcpDto.getMapY());
+
+                Gcp updatedGcp = gcpRepository.save(gcpToUpdate);
+                return GcpMapper.toDto(updatedGcp);
+        }
 }

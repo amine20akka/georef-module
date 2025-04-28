@@ -90,43 +90,74 @@ public class GcpController {
             return ResponseEntity.badRequest().body(null);
 
         } catch (ImageNotFoundException e) {
-            
+
             log.error("Image introuvable : {}", e.getMessage(), e);
             return ResponseEntity.status(404).body(null);
-        
+
         } catch (Exception e) {
 
             log.error("Erreur inattendue lors de la récupération des GCPs : {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(null);
-        
+
         }
     }
 
     @Operation(summary = "Supprimer un GCP par ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "GCP supprimé avec succès"),
-        @ApiResponse(responseCode = "404", description = "GCP non trouvé", content = @Content),
-        @ApiResponse(responseCode = "500", description = "Erreur serveur")
+            @ApiResponse(responseCode = "204", description = "GCP supprimé avec succès"),
+            @ApiResponse(responseCode = "404", description = "GCP non trouvé", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Erreur serveur")
     })
     @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<GcpDto>> deleteGcpById(@PathVariable UUID id) {
         try {
-        
+
             List<GcpDto> updatedGcpDtos = gcpService.deleteGcpById(id);
             log.info("GCP supprimé avec succès : {}", id);
             return ResponseEntity.status(200).body(updatedGcpDtos);
-        
+
         } catch (GcpNotFoundException e) {
-        
+
             log.error("Erreur lors de la suppression du GCP : {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        
+
         } catch (Exception e) {
-        
+
             log.error("Erreur inattendue lors de la suppression du GCP : {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        
+
         }
     }
 
+    @Operation(summary = "Update GCP", description = "Update an already existing GCP", responses = {
+            @ApiResponse(responseCode = "200", description = "GCP updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "404", description = "GCP not found"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error during GCP update")
+    })
+    @PutMapping(value = "/update", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GcpDto> updateGcp(@RequestBody GcpDto gcpDto) {
+        try {
+
+            GcpDto updatedGcp = gcpService.updateGcp(gcpDto);
+            log.info("GCP updated successfully: {}", updatedGcp.getId());
+            return ResponseEntity.status(200).body(updatedGcp);
+
+        } catch (IllegalArgumentException e) {
+
+            log.error("Invalid input data: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(null);
+
+        } catch (GcpNotFoundException e) {
+
+            log.error("GCP not found: {}", e.getMessage(), e);
+            return ResponseEntity.status(404).body(null);
+
+        } catch (Exception e) {
+
+            log.error("Unexpected error during GCP update: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(null);
+
+        }
+    }
 }
