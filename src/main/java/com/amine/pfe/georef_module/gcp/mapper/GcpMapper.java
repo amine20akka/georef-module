@@ -39,4 +39,8 @@ public class GcpMapper {
     public static List<GcpDto> toGcpDtoList(List<Gcp> gcps) {
         return gcps.stream().map(GcpMapper::toDto).collect(Collectors.toList());
     }
+
+    public static List<Gcp> toGcpEntityList(List<GcpDto> gcpDtos, GeorefImage image) {
+        return gcpDtos.stream().map(gcpDto -> toEntity(gcpDto, image)).collect(Collectors.toList());
+    }
 }

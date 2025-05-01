@@ -21,10 +21,10 @@ public class Gcp {
     private GeorefImage image;
 
     @Column(nullable = false)
-    private int sourceX;
+    private Double sourceX;
 
     @Column(nullable = false)
-    private int sourceY;
+    private Double sourceY;
 
     @Column(nullable = false)
     private Double mapX;

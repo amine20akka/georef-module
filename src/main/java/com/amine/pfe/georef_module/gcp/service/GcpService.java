@@ -10,11 +10,15 @@ import com.amine.pfe.georef_module.entity.Gcp;
 import com.amine.pfe.georef_module.entity.GeorefImage;
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.gcp.dto.GcpDto;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsRequest;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsResponse;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsResult;
 import com.amine.pfe.georef_module.gcp.exceptions.DuplicateGcpIndexException;
 import com.amine.pfe.georef_module.gcp.exceptions.GcpNotFoundException;
 import com.amine.pfe.georef_module.gcp.mapper.GcpMapper;
 import com.amine.pfe.georef_module.gcp.repository.GcpRepository;
 import com.amine.pfe.georef_module.gcp.service.port.GcpFactory;
+import com.amine.pfe.georef_module.gcp.service.port.ResidualsService;
 import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,13 +30,12 @@ public class GcpService {
         private final GcpRepository gcpRepository;
         private final GeorefImageRepository imageRepository;
         private final GcpFactory gcpFactory;
+        private final ResidualsService residualsService;
 
         public GcpDto addGcp(GcpDto gcpDto) {
 
                 UUID imageId = gcpDto.getImageId();
-                if (imageId == null) {
-                        throw new IllegalArgumentException("L'ID de l'image ne peut pas être null.");
-                }
+                validateImageIdNotNull(imageId);
 
                 GeorefImage image = imageRepository.findById(imageId)
                                 .orElseThrow(() -> {
@@ -61,9 +64,7 @@ public class GcpService {
 
         public List<GcpDto> getGcpsByImageId(UUID imageId) {
 
-                if (imageId == null) {
-                        throw new IllegalArgumentException("L'ID de l'image ne peut pas être null.");
-                }
+                validateImageIdNotNull(imageId);
 
                 GeorefImage image = imageRepository.findById(imageId)
                                 .orElseThrow(() -> {
@@ -73,7 +74,6 @@ public class GcpService {
 
                 List<Gcp> gcps = gcpRepository.findByImageId(image.getId());
                 return GcpMapper.toGcpDtoList(gcps);
-
         }
 
         @Transactional
@@ -98,6 +98,7 @@ public class GcpService {
                 return GcpMapper.toGcpDtoList(remainingGcps);
         }
 
+        @Transactional
         public GcpDto updateGcp(GcpDto gcpDto) {
                 if (gcpDto.getId() == null) {
                         throw new IllegalArgumentException("GCP ID cannot be null.");
@@ -112,7 +113,79 @@ public class GcpService {
                 gcpToUpdate.setMapX(gcpDto.getMapX());
                 gcpToUpdate.setMapY(gcpDto.getMapY());
 
-                Gcp updatedGcp = gcpRepository.save(gcpToUpdate);
-                return GcpMapper.toDto(updatedGcp);
+                return GcpMapper.toDto(gcpToUpdate);
+        }
+
+        @Transactional
+        public ResidualsResponse updateResiduals(ResidualsRequest residualsRequest) {
+                validateImageIdNotNull(residualsRequest.getImageId());
+
+                GeorefImage image = imageRepository.findById(residualsRequest.getImageId())
+                        .orElseThrow(() -> new ImageNotFoundException(
+                                "Image avec l'ID " + residualsRequest.getImageId() + " introuvable."
+                        ));
+
+                List<Gcp> gcps = getGcpsForImage(residualsRequest.getImageId());
+
+                List<GcpDto> gcpDtos = GcpMapper.toGcpDtoList(gcps);
+                
+                int minPointsRequired = residualsService.getMinimumPointsRequired(residualsRequest.getType());
+                
+                if (!residualsService.hasEnoughGCPs(gcpDtos, residualsRequest.getType())) {
+                        List<Gcp> clearedGcps = clearResiduals(gcps);
+                        return buildResponse(false, clearedGcps, null, minPointsRequired);
+                }
+
+                ResidualsResult result = residualsService.computeResiduals(
+                                                        gcpDtos,
+                                                        residualsRequest.getType(),
+                                                        residualsRequest.getSrid());
+
+                List<Gcp> updatedGcps = updateResidualsInGcps(gcps, result.getResiduals());
+                updateMeanResidualForImage(image, result.getRmse());
+
+                return buildResponse(true, updatedGcps, result.getRmse(), minPointsRequired);
+        }
+
+        private void validateImageIdNotNull(UUID imageId) {
+                if (imageId == null) {
+                        throw new IllegalArgumentException("L'ID de l'image ne peut pas être null.");
+                }
+        }
+
+        private List<Gcp> getGcpsForImage(UUID imageId) {
+                List<Gcp> gcps = gcpRepository.findByImageId(imageId);
+                if (gcps.isEmpty()) {
+                        throw new GcpNotFoundException("Aucun GCP trouvé pour l'image avec l'ID : " + imageId);
+                }
+                return gcps;
+        }
+
+        private List<Gcp> clearResiduals(List<Gcp> gcps) {
+                gcps.forEach(gcp -> gcp.setResidual(null));
+                List<Gcp> updatedGcps = gcpRepository.saveAll(gcps);
+                return updatedGcps;
+        }
+
+        private List<Gcp> updateResidualsInGcps(List<Gcp> gcps, List<Double> residuals) {
+                if (gcps.size() != residuals.size()) {
+                        throw new IllegalStateException("Number of residuals does not match number of GCPs.");
+                }
+                for (int i = 0; i < gcps.size(); i++) {
+                        double residual = Math.round(residuals.get(i) * 10000.0) / 10000.0;
+                        gcps.get(i).setResidual(residual);
+                }
+                List<Gcp> updatedGcps = gcpRepository.saveAll(gcps);
+                return updatedGcps;
+        }
+
+        private void updateMeanResidualForImage(GeorefImage image, double meanResidual) {
+                double roundedMeanResidual = Math.round(meanResidual * 10000.0) / 10000.0;
+                image.setMeanResidual(roundedMeanResidual);
+        }
+
+        private ResidualsResponse buildResponse(boolean success, List<Gcp> gcps, Double rmse, int minRequired) {
+                List<GcpDto> gcpDtos = GcpMapper.toGcpDtoList(gcps);
+                return new ResidualsResponse(success, gcpDtos, rmse, minRequired);
         }
 }

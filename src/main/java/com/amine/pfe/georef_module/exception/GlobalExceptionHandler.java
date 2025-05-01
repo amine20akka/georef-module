@@ -34,5 +34,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                              .body("An error occurred: " + ex.getMessage());
     }
+
+    @ExceptionHandler(NotEnoughGcpException.class)
+    public ResponseEntity<String> handleNotEnoughGcpException(NotEnoughGcpException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                             .body("Not enough GCPs: " + ex.getMessage());
+    }
 }
 

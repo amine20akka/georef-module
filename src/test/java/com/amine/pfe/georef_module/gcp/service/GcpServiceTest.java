@@ -1,10 +1,14 @@
 package com.amine.pfe.georef_module.gcp.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -12,6 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.UUID;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,13 +29,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.amine.pfe.georef_module.entity.Gcp;
 import com.amine.pfe.georef_module.entity.GeorefImage;
+import com.amine.pfe.georef_module.enums.Srid;
+import com.amine.pfe.georef_module.enums.TransformationType;
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.gcp.dto.GcpDto;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsRequest;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsResponse;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsResult;
 import com.amine.pfe.georef_module.gcp.exceptions.DuplicateGcpIndexException;
 import com.amine.pfe.georef_module.gcp.exceptions.GcpNotFoundException;
 import com.amine.pfe.georef_module.gcp.mapper.GcpMapper;
 import com.amine.pfe.georef_module.gcp.repository.GcpRepository;
 import com.amine.pfe.georef_module.gcp.service.port.GcpFactory;
+import com.amine.pfe.georef_module.gcp.service.port.ResidualsService;
 import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,6 +56,9 @@ class GcpServiceTest {
     @Mock
     private GcpFactory gcpFactory;
 
+    @Mock
+    private ResidualsService residualsService;
+
     @InjectMocks
     private GcpService gcpService;
 
@@ -56,8 +70,8 @@ class GcpServiceTest {
 
         GcpDto addGcpRequest = GcpDto.builder()
                 .imageId(imageId)
-                .sourceX(10)
-                .sourceY(20)
+                .sourceX(10.44)
+                .sourceY(20.44)
                 .mapX(100.0)
                 .mapY(200.0)
                 .index(2)
@@ -69,7 +83,7 @@ class GcpServiceTest {
         when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
         when(gcpRepository.findMaxIndexByImageId(imageId)).thenReturn(Optional.of(1));
         when(gcpRepository.existsByImageIdAndIndex(imageId, 2)).thenReturn(false);
-        when(gcpFactory.createGcp(image, 10, 20, 100.0, 200.0, 2))
+        when(gcpFactory.createGcp(image, 10.44, 20.44, 100.0, 200.0, 2))
                 .thenReturn(savedGcp);
         when(gcpRepository.save(any(Gcp.class))).thenReturn(savedGcp);
 
@@ -258,16 +272,16 @@ class GcpServiceTest {
         existingGcp.setId(gcpId);
         existingGcp.setImage(image);
         existingGcp.setIndex(2);
-        existingGcp.setSourceX(50);
-        existingGcp.setSourceY(100);
+        existingGcp.setSourceX(50.44);
+        existingGcp.setSourceY(100.44);
         existingGcp.setMapX(5.0);
         existingGcp.setMapY(10.0);
 
         GcpDto incomingDto = new GcpDto();
         incomingDto.setId(gcpId);
         incomingDto.setImageId(imageId);
-        incomingDto.setSourceX(100);
-        incomingDto.setSourceY(200);
+        incomingDto.setSourceX(100.44);
+        incomingDto.setSourceY(200.44);
         incomingDto.setMapX(10.0);
         incomingDto.setMapY(20.0);
         incomingDto.setIndex(2);
@@ -319,5 +333,132 @@ class GcpServiceTest {
         // WHEN + THEN
         assertThrows(IllegalArgumentException.class, () -> gcpService.updateGcp(incomingDto));
         verifyNoInteractions(gcpRepository);
+    }
+
+    @Test
+    @DisplayName("should return calculated residuals successfully")
+    void shouldComputeAndUpdateResidualsSuccessfully() {
+        // GIVEN
+        UUID gcp1Id = UUID.randomUUID();
+        UUID gcp2Id = UUID.randomUUID();
+        UUID imageId = UUID.randomUUID();
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+
+        TransformationType type = TransformationType.POLYNOMIALE_1;
+        List<Double> residuals = List.of(0.5, 1.2);
+
+        Gcp gcp1 = new Gcp();
+        gcp1.setId(gcp1Id);
+        gcp1.setImage(image);
+        gcp1.setResidual(null);
+        Gcp gcp2 = new Gcp();
+        gcp2.setId(gcp2Id);
+        gcp2.setImage(image);
+        gcp2.setResidual(null);
+
+        List<Gcp> gcps = List.of(gcp1, gcp2);
+
+        Gcp updatedGcp1 = new Gcp();
+        updatedGcp1.setId(gcp1Id);
+        updatedGcp1.setImage(image);
+        updatedGcp1.setResidual(0.5);
+        Gcp updatedGcp2 = new Gcp();
+        updatedGcp2.setId(gcp2Id);
+        updatedGcp2.setImage(image);
+        updatedGcp2.setResidual(1.2);
+
+        List<Gcp> updatedGcps = List.of(updatedGcp1, updatedGcp2);
+        List<GcpDto> updatedGcpDtos = List.of(GcpMapper.toDto(updatedGcp1), GcpMapper.toDto(updatedGcp2));
+
+        ResidualsRequest request = new ResidualsRequest();
+        request.setImageId(imageId);
+        request.setType(type);
+        request.setSrid(Srid._3857);
+
+        when(gcpRepository.findByImageId(imageId)).thenReturn(gcps);
+        when(residualsService.getMinimumPointsRequired(type)).thenReturn(3);
+        when(residualsService.hasEnoughGCPs(anyList(), eq(type))).thenReturn(true);
+        when(residualsService.computeResiduals(anyList(), eq(type), eq(Srid._3857)))
+            .thenReturn(new ResidualsResult(residuals, 1.0));
+        when(gcpRepository.saveAll(gcps)).thenReturn(updatedGcps);
+
+        // WHEN
+        ResidualsResponse response = gcpService.updateResiduals(request);
+
+        // THEN
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertEquals(1.0, response.getRmse());
+        assertEquals(2, response.getGcpDtos().size());
+        assertEquals(updatedGcpDtos.get(0).getId(), response.getGcpDtos().get(0).getId());
+        assertEquals(updatedGcpDtos.get(0).getResidual(), response.getGcpDtos().get(0).getResidual());
+        assertEquals(updatedGcpDtos.get(1).getId(), response.getGcpDtos().get(1).getId());
+        assertEquals(updatedGcpDtos.get(1).getResidual(), response.getGcpDtos().get(1).getResidual());
+        verify(gcpRepository).saveAll(gcps);
+    }
+
+    @Test
+    @DisplayName("should throw IllegalArgumentException when imageId is null")
+    void shouldThrowIllegalArgumentException_WhenImageIdIsNull() {
+        ResidualsRequest request = new ResidualsRequest();
+        request.setImageId(null);
+
+        assertThrows(IllegalArgumentException.class, () -> gcpService.updateResiduals(request));
+    }
+
+    @Test
+    @DisplayName("should throw GcpNotFoundException when no GCPs found")
+    void shouldThrowGcpNotFoundException_WhenNoGcpFound() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+
+        ResidualsRequest request = new ResidualsRequest();
+        request.setImageId(imageId);
+
+        when(gcpRepository.findByImageId(imageId)).thenReturn(Collections.emptyList());
+
+        // WHEN + THEN
+        assertThrows(GcpNotFoundException.class, () -> gcpService.updateResiduals(request));
+    }
+
+    @Test
+    @DisplayName("should clear residuals when not enough GCPs")
+    void shouldClearResidualsWhenNotEnoughGcps() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+
+        Gcp gcp1 = new Gcp();
+        gcp1.setImage(image);
+        gcp1.setResidual(null);
+        Gcp gcp2 = new Gcp();
+        gcp2.setImage(image);
+        gcp2.setResidual(null);
+
+        List<Gcp> gcps = List.of(gcp1, gcp2);
+        TransformationType type = TransformationType.POLYNOMIALE_1;
+
+        when(gcpRepository.findByImageId(imageId)).thenReturn(gcps);
+        when(residualsService.getMinimumPointsRequired(type)).thenReturn(3);
+        when(residualsService.hasEnoughGCPs(anyList(), eq(type))).thenReturn(false);
+        when(gcpRepository.saveAll(anyList())).thenReturn(gcps);
+
+        ResidualsRequest request = new ResidualsRequest();
+        request.setImageId(imageId);
+        request.setType(type);
+
+        // WHEN
+        ResidualsResponse response = gcpService.updateResiduals(request);
+
+        // THEN
+        assertFalse(response.isSuccess());
+        assertNull(response.getRmse());
+        assertEquals(response.getMinPointsRequired(), 3);
+        assertEquals(response.getGcpDtos().get(0).getResidual(), null);
+        assertEquals(response.getGcpDtos().get(1).getResidual(), null);
+        verify(gcpRepository, times(1)).findByImageId(imageId);
+        verify(gcpRepository, times(1)).saveAll(anyList());
     }
 }
