@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 @JsonFormat(shape = JsonFormat.Shape.NUMBER)
 public enum Srid {
-    // _4326(4326),
+    _4326(4326),
     _3857(3857);
 
     private final int code;

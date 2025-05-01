@@ -21,8 +21,8 @@ public class GcpMapperTest {
         gcp.setId(id);
         gcp.setImage(image);
         gcp.setIndex(3);
-        gcp.setSourceX(123);
-        gcp.setSourceY(789);
+        gcp.setSourceX(123.32);
+        gcp.setSourceY(789.44);
         gcp.setMapX(234233.332);
         gcp.setMapY(233433.56);
         gcp.setResidual(0.123);
@@ -34,8 +34,8 @@ public class GcpMapperTest {
         assertEquals(id, dto.getId());
         assertEquals(image.getId(), dto.getImageId());
         assertEquals(3, dto.getIndex());
-        assertEquals(123, dto.getSourceX());
-        assertEquals(789, dto.getSourceY());
+        assertEquals(123.32, dto.getSourceX());
+        assertEquals(789.44, dto.getSourceY());
         assertEquals(234233.332, dto.getMapX());
         assertEquals(233433.56, dto.getMapY());
         assertEquals(0.123, dto.getResidual());
@@ -50,8 +50,8 @@ public class GcpMapperTest {
         dto.setId(id);
         dto.setImageId(image.getId());
         dto.setIndex(3);
-        dto.setSourceX(123);
-        dto.setSourceY(789);
+        dto.setSourceX(123.44);
+        dto.setSourceY(789.44);
         dto.setMapX(234233.332);
         dto.setMapY(233433.56);
         dto.setResidual(0.123);
@@ -63,8 +63,8 @@ public class GcpMapperTest {
         assertEquals(id, gcp.getId());
         assertEquals(image, gcp.getImage());
         assertEquals(3, gcp.getIndex());
-        assertEquals(123, gcp.getSourceX());
-        assertEquals(789, gcp.getSourceY());
+        assertEquals(123.44, gcp.getSourceX());
+        assertEquals(789.44, gcp.getSourceY());
         assertEquals(234233.332, gcp.getMapX());
         assertEquals(233433.56, gcp.getMapY());
         assertEquals(0.123, gcp.getResidual());

@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.gcp.dto.GcpDto;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsRequest;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsResponse;
 import com.amine.pfe.georef_module.gcp.exceptions.DuplicateGcpIndexException;
 import com.amine.pfe.georef_module.gcp.exceptions.GcpNotFoundException;
 import com.amine.pfe.georef_module.gcp.service.GcpService;
@@ -158,6 +160,38 @@ public class GcpController {
             log.error("Unexpected error during GCP update: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body(null);
 
+        }
+    }
+
+    @Operation(summary = "Update Residuals", description = "Update the residuals of a list of GCPs", responses = {
+            @ApiResponse(responseCode = "200", description = "Residuals updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "404", description = "Image not found"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error during residuals update")
+    })
+    @PutMapping(value = "/update/residuals", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ResidualsResponse> updateResiduals(@RequestBody ResidualsRequest residualsRequest) {
+        try {
+        
+            ResidualsResponse residualsResponse = gcpService.updateResiduals(residualsRequest);
+            log.info("Residuals updated successfully for image ID {}: {}", residualsRequest.getImageId(), residualsResponse);
+            return ResponseEntity.ok(residualsResponse);
+        
+        } catch (IllegalArgumentException e) {
+        
+            log.error("Invalid input data: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(null);
+        
+        } catch (GcpNotFoundException e) {
+        
+            log.error("GCPs not found: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        
+        } catch (Exception e) {
+        
+            log.error("Unexpected error during residuals update: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        
         }
     }
 }

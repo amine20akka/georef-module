@@ -10,7 +10,7 @@ import com.amine.pfe.georef_module.gcp.service.port.GcpFactory;
 public class GcpFactoryImpl implements GcpFactory {
     
     @Override
-    public Gcp createGcp(GeorefImage image, int sourceX, int sourceY, double mapX, double mapY, Integer index) {
+    public Gcp createGcp(GeorefImage image, Double sourceX, Double sourceY, double mapX, double mapY, Integer index) {
         Gcp gcp = new Gcp();
         gcp.setImage(image);
         gcp.setIndex(index);
