@@ -1,5 +1,6 @@
 package com.amine.pfe.georef_module.gcp.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -10,6 +11,7 @@ import com.amine.pfe.georef_module.entity.Gcp;
 import com.amine.pfe.georef_module.entity.GeorefImage;
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.gcp.dto.GcpDto;
+import com.amine.pfe.georef_module.gcp.dto.LoadGcpsRequest;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsRequest;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsResponse;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsResult;
@@ -121,30 +123,73 @@ public class GcpService {
                 validateImageIdNotNull(residualsRequest.getImageId());
 
                 GeorefImage image = imageRepository.findById(residualsRequest.getImageId())
-                        .orElseThrow(() -> new ImageNotFoundException(
-                                "Image avec l'ID " + residualsRequest.getImageId() + " introuvable."
-                        ));
+                                .orElseThrow(() -> new ImageNotFoundException(
+                                                "Image avec l'ID " + residualsRequest.getImageId() + " introuvable."));
 
                 List<Gcp> gcps = getGcpsForImage(residualsRequest.getImageId());
 
                 List<GcpDto> gcpDtos = GcpMapper.toGcpDtoList(gcps);
-                
+
                 int minPointsRequired = residualsService.getMinimumPointsRequired(residualsRequest.getType());
-                
+
                 if (!residualsService.hasEnoughGCPs(gcpDtos, residualsRequest.getType())) {
                         List<Gcp> clearedGcps = clearResiduals(gcps);
                         return buildResponse(false, clearedGcps, null, minPointsRequired);
                 }
 
                 ResidualsResult result = residualsService.computeResiduals(
-                                                        gcpDtos,
-                                                        residualsRequest.getType(),
-                                                        residualsRequest.getSrid());
+                                gcpDtos,
+                                residualsRequest.getType(),
+                                residualsRequest.getSrid());
 
                 List<Gcp> updatedGcps = updateResidualsInGcps(gcps, result.getResiduals());
                 updateMeanResidualForImage(image, result.getRmse());
 
                 return buildResponse(true, updatedGcps, result.getRmse(), minPointsRequired);
+        }
+
+        @Transactional
+        public List<GcpDto> loadGcps(LoadGcpsRequest request) {
+                UUID imageId = request.getImageId();
+                validateImageIdNotNull(imageId);
+
+                if (request.getGcps() == null || request.getGcps().isEmpty()) {
+                        throw new IllegalArgumentException("La liste des GCPs ne peut pas être vide.");
+                }
+
+                GeorefImage image = imageRepository.findById(imageId)
+                                .orElseThrow(() -> new ImageNotFoundException(
+                                                "Image avec l'ID " + imageId + " introuvable."));
+
+                if (request.isOverwrite()) {
+                        gcpRepository.deleteByImageId(imageId);
+                }
+
+                Integer startIndex = gcpRepository.findMaxIndexByImageId(imageId)
+                                                .map(maxIndex -> maxIndex + 1)
+                                                .orElse(1);
+
+                List<Gcp> newGcps = new ArrayList<>();
+                Integer index = startIndex;
+
+                for (GcpDto dto : request.getGcps()) {
+                        if (gcpRepository.existsByImageIdAndIndex(imageId, index)) {
+                                throw new DuplicateGcpIndexException("Un GCP avec l'index " + index + " existe déjà.");
+                        }
+
+                        Gcp gcp = gcpFactory.createGcp(
+                                        image,
+                                        dto.getSourceX(),
+                                        dto.getSourceY(),
+                                        dto.getMapX(),
+                                        dto.getMapY(),
+                                        index++
+                                );
+                        newGcps.add(gcp);
+                }
+
+                List<Gcp> savedGcps = gcpRepository.saveAll(newGcps);
+                return GcpMapper.toGcpDtoList(savedGcps);
         }
 
         private void validateImageIdNotNull(UUID imageId) {

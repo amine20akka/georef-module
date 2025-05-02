@@ -33,6 +33,7 @@ import com.amine.pfe.georef_module.enums.Srid;
 import com.amine.pfe.georef_module.enums.TransformationType;
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.gcp.dto.GcpDto;
+import com.amine.pfe.georef_module.gcp.dto.LoadGcpsRequest;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsRequest;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsResponse;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsResult;
@@ -380,7 +381,7 @@ class GcpServiceTest {
         when(residualsService.getMinimumPointsRequired(type)).thenReturn(3);
         when(residualsService.hasEnoughGCPs(anyList(), eq(type))).thenReturn(true);
         when(residualsService.computeResiduals(anyList(), eq(type), eq(Srid._3857)))
-            .thenReturn(new ResidualsResult(residuals, 1.0));
+                .thenReturn(new ResidualsResult(residuals, 1.0));
         when(gcpRepository.saveAll(gcps)).thenReturn(updatedGcps);
 
         // WHEN
@@ -461,4 +462,124 @@ class GcpServiceTest {
         verify(gcpRepository, times(1)).findByImageId(imageId);
         verify(gcpRepository, times(1)).saveAll(anyList());
     }
+
+    @Test
+    @DisplayName("should load and return GcpDtos successfully when overwrite is true")
+    void shouldLoadGcpsSuccessfully_WithOverwriteTrue() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+
+        GcpDto dto1 = new GcpDto(10.44, 20.44, 30.44, 40.44);
+        GcpDto dto2 = new GcpDto(50.44, 60.44, 70.44, 80.44);
+        LoadGcpsRequest request = new LoadGcpsRequest(imageId, List.of(dto1, dto2), true);
+
+        when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
+        when(gcpRepository.findMaxIndexByImageId(imageId)).thenReturn(Optional.empty());
+
+        Gcp gcp1 = new Gcp();
+        gcp1.setId(UUID.randomUUID());
+        gcp1.setImage(image);
+        gcp1.setIndex(1);
+
+        Gcp gcp2 = new Gcp();
+        gcp2.setId(UUID.randomUUID());
+        gcp2.setImage(image);
+        gcp2.setIndex(2);
+
+        when(gcpFactory.createGcp(eq(image), eq(10.44), eq(20.44), eq(30.44), eq(40.44), eq(1))).thenReturn(gcp1);
+        when(gcpFactory.createGcp(eq(image), eq(50.44), eq(60.44), eq(70.44), eq(80.44), eq(2))).thenReturn(gcp2);
+        when(gcpRepository.saveAll(anyList())).thenReturn(List.of(gcp1, gcp2));
+
+        // WHEN
+        List<GcpDto> result = gcpService.loadGcps(request);
+
+        // THEN
+        verify(gcpRepository).deleteByImageId(imageId);
+        assertEquals(1, result.get(0).getIndex());
+        assertEquals(2, result.get(1).getIndex());
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    @DisplayName("should load and return GcpDtos successfully when overwrite is false")
+    void shouldLoadGcpsSuccessfully_WithOverwriteFalse() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+
+        GcpDto dto1 = new GcpDto(10.44, 20.44, 30.44, 40.44);
+        GcpDto dto2 = new GcpDto(50.44, 60.44, 70.44, 80.44);
+        LoadGcpsRequest request = new LoadGcpsRequest(imageId, List.of(dto1, dto2), false);
+
+        when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
+        when(gcpRepository.findMaxIndexByImageId(imageId)).thenReturn(Optional.of(2));
+
+        Gcp gcp1 = new Gcp();
+        gcp1.setId(UUID.randomUUID());
+        gcp1.setImage(image);
+        gcp1.setIndex(3);
+
+        Gcp gcp2 = new Gcp();
+        gcp2.setId(UUID.randomUUID());
+        gcp2.setImage(image);
+        gcp2.setIndex(4);
+
+        when(gcpFactory.createGcp(eq(image), eq(10.44), eq(20.44), eq(30.44), eq(40.44), eq(3))).thenReturn(gcp1);
+        when(gcpFactory.createGcp(eq(image), eq(50.44), eq(60.44), eq(70.44), eq(80.44), eq(4))).thenReturn(gcp2);
+        when(gcpRepository.saveAll(anyList())).thenReturn(List.of(gcp1, gcp2));
+
+        // WHEN
+        List<GcpDto> result = gcpService.loadGcps(request);
+
+        // THEN
+        verify(gcpRepository, never()).deleteByImageId(imageId);
+        assertEquals(3, result.get(0).getIndex());
+        assertEquals(4, result.get(1).getIndex());
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    @DisplayName("should throw IllegalArgumentException when imageId is null when trying to load GCPs")
+    void shouldThrowIllegalArgumentException_WhenImageIdIsNull_WhileLoadingGcps() {
+        // GIVEN
+        LoadGcpsRequest request = new LoadGcpsRequest(null, List.of(new GcpDto(1.0, 1.0, 2.0, 2.0)), false);
+
+        // WHEN + THEN
+        assertThrows(IllegalArgumentException.class, () -> gcpService.loadGcps(request));
+    }
+
+    @Test
+    @DisplayName("should throw ImageNotFoundException when image not found when trying to load GCPs")
+    void shouldThrowImageNotFoundException_WhenImageNotFound_WhileLoadingGcps() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        LoadGcpsRequest request = new LoadGcpsRequest(imageId, List.of(new GcpDto(1.0, 1.0, 2.0, 2.0)), false);
+
+        when(imageRepository.findById(imageId)).thenReturn(Optional.empty());
+
+        // WHEN + THEN
+        assertThrows(ImageNotFoundException.class, () -> gcpService.loadGcps(request));
+    }
+
+    @Test
+    @DisplayName("should throw DuplicateGcpIndexException when index already exists when trying to load GCPs")
+    void shouldThrowDuplicateGcpIndexException_WhenIndexAlreadyExists_WhileLoadingGcps() {
+        // GIVEN
+        UUID imageId = UUID.randomUUID();
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
+
+        LoadGcpsRequest request = new LoadGcpsRequest(imageId, List.of(new GcpDto(1.0, 1.0, 2.0, 2.0)), false);
+
+        when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
+        when(gcpRepository.findMaxIndexByImageId(imageId)).thenReturn(Optional.of(0));
+        when(gcpRepository.existsByImageIdAndIndex(imageId, 1)).thenReturn(true);
+
+        // WHEN + THEN
+        assertThrows(DuplicateGcpIndexException.class, () -> gcpService.loadGcps(request));
+    }
+
 }
