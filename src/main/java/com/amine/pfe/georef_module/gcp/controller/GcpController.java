@@ -234,4 +234,32 @@ public class GcpController {
 
         }
     }
+
+    @Operation(summary = "Supprimer tous les GCPs", description = "Supprimer tous les GCPs par ID d'image")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Tous les GCPs supprimés avec succès"),
+            @ApiResponse(responseCode = "404", description = "Aucun GCP trouvé pour cette image", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Erreur serveur")
+    })
+    @DeleteMapping(value = "/all/{imageId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> deleteAllGcpsByImageId(@PathVariable UUID imageId) {
+        try {
+            boolean deleted = gcpService.deleteAllGcpsByImageId(imageId);
+
+            if (!deleted) {
+                log.warn("Aucun GCP trouvé à supprimer pour l'image {}", imageId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            log.info("Tous les GCPs de l'image {} ont été supprimés avec succès", imageId);
+            return ResponseEntity.noContent().build();
+
+        } catch (Exception e) {
+        
+            log.error("Erreur lors de la suppression des GCPs pour l'image {} : {}", imageId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        
+        }
+    }
+
 }
