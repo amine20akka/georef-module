@@ -20,4 +20,5 @@ public interface GcpRepository extends JpaRepository<Gcp, UUID> {
     @Query("SELECT MAX(g.index) FROM Gcp g WHERE g.image.id = :imageId")
     Optional<Integer> findMaxIndexByImageId(@Param("imageId") UUID imageId);
 
+    void deleteByImageId(UUID imageId);
 }

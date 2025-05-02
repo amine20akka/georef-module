@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.gcp.dto.GcpDto;
+import com.amine.pfe.georef_module.gcp.dto.LoadGcpsRequest;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsRequest;
 import com.amine.pfe.georef_module.gcp.dto.ResidualsResponse;
 import com.amine.pfe.georef_module.gcp.exceptions.DuplicateGcpIndexException;
@@ -41,7 +42,7 @@ public class GcpController {
             @ApiResponse(responseCode = "409", description = "Erreur de doublon d'index GCP"),
             @ApiResponse(responseCode = "500", description = "Erreur inattendue lors de l'ajout d'un GCP")
     })
-    @PostMapping(value = "/add", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GcpDto> addGcp(@RequestBody GcpDto gcpDto) {
         try {
 
@@ -78,7 +79,7 @@ public class GcpController {
             @ApiResponse(responseCode = "404", description = "Image introuvable"),
             @ApiResponse(responseCode = "500", description = "Erreur inattendue lors de la récupération des GCPs")
     })
-    @GetMapping(value = "/get/{imageId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/{imageId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<GcpDto>> getGcpsByImageId(@PathVariable UUID imageId) {
         try {
 
@@ -110,7 +111,7 @@ public class GcpController {
             @ApiResponse(responseCode = "404", description = "GCP non trouvé", content = @Content),
             @ApiResponse(responseCode = "500", description = "Erreur serveur")
     })
-    @DeleteMapping(value = "/delete/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<GcpDto>> deleteGcpById(@PathVariable UUID id) {
         try {
 
@@ -137,7 +138,7 @@ public class GcpController {
             @ApiResponse(responseCode = "404", description = "GCP not found"),
             @ApiResponse(responseCode = "500", description = "Unexpected error during GCP update")
     })
-    @PutMapping(value = "/update", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GcpDto> updateGcp(@RequestBody GcpDto gcpDto) {
         try {
 
@@ -169,29 +170,68 @@ public class GcpController {
             @ApiResponse(responseCode = "404", description = "Image not found"),
             @ApiResponse(responseCode = "500", description = "Unexpected error during residuals update")
     })
-    @PutMapping(value = "/update/residuals", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PutMapping(value = "/residuals", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ResidualsResponse> updateResiduals(@RequestBody ResidualsRequest residualsRequest) {
         try {
-        
+
             ResidualsResponse residualsResponse = gcpService.updateResiduals(residualsRequest);
-            log.info("Residuals updated successfully for image ID {}: {}", residualsRequest.getImageId(), residualsResponse);
+            log.info("Residuals updated successfully for image ID {}: {}", residualsRequest.getImageId(),
+                    residualsResponse);
             return ResponseEntity.ok(residualsResponse);
-        
+
         } catch (IllegalArgumentException e) {
-        
+
             log.error("Invalid input data: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(null);
-        
+
         } catch (GcpNotFoundException e) {
-        
+
             log.error("GCPs not found: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-        
+
         } catch (Exception e) {
-        
+
             log.error("Unexpected error during residuals update: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        
+
+        }
+    }
+
+    @Operation(summary = "Load GCPs", description = "Load a list of GCPs via a JSON file.", responses = {
+            @ApiResponse(responseCode = "200", description = "GCPs added successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "404", description = "Not Found Image"),
+            @ApiResponse(responseCode = "409", description = "Duplicated GCP Index"),
+            @ApiResponse(responseCode = "500", description = "Unexpected error while loading GCPs")
+    })
+    @PostMapping(value = "/load", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<GcpDto>> loadGcps(@RequestBody LoadGcpsRequest request) {
+        try {
+
+            List<GcpDto> gcpDtosResponse = gcpService.loadGcps(request);
+            log.info("GCPs added successfully : {}", gcpDtosResponse);
+            return ResponseEntity.status(200).body(gcpDtosResponse);
+
+        } catch (IllegalArgumentException e) {
+
+            log.error("Invalid input data : {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(null);
+
+        } catch (ImageNotFoundException e) {
+
+            log.error("Not Found Image : {}", e.getMessage(), e);
+            return ResponseEntity.status(404).body(null);
+
+        } catch (DuplicateGcpIndexException e) {
+
+            log.error("Duplicated GCP Index : {}", e.getMessage(), e);
+            return ResponseEntity.status(409).body(null);
+
+        } catch (Exception e) {
+
+            log.error("Unexpected error while loading GCPs : {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(null);
+
         }
     }
 }
