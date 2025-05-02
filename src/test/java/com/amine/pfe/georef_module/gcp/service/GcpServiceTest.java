@@ -287,10 +287,7 @@ class GcpServiceTest {
         incomingDto.setMapY(20.0);
         incomingDto.setIndex(2);
 
-        Gcp updatedGcp = GcpMapper.toEntity(incomingDto, image);
-
         when(gcpRepository.findById(gcpId)).thenReturn(Optional.of(existingGcp));
-        when(gcpRepository.save(existingGcp)).thenReturn(updatedGcp);
 
         // WHEN
         GcpDto result = gcpService.updateGcp(incomingDto);
@@ -304,7 +301,6 @@ class GcpServiceTest {
         assertEquals(result.getIndex(), incomingDto.getIndex());
         assertEquals(result.getImageId(), imageId);
         verify(gcpRepository).findById(gcpId);
-        verify(gcpRepository).save(existingGcp);
     }
 
     @Test
@@ -377,6 +373,7 @@ class GcpServiceTest {
         request.setType(type);
         request.setSrid(Srid._3857);
 
+        when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
         when(gcpRepository.findByImageId(imageId)).thenReturn(gcps);
         when(residualsService.getMinimumPointsRequired(type)).thenReturn(3);
         when(residualsService.hasEnoughGCPs(anyList(), eq(type))).thenReturn(true);
@@ -413,14 +410,21 @@ class GcpServiceTest {
     void shouldThrowGcpNotFoundException_WhenNoGcpFound() {
         // GIVEN
         UUID imageId = UUID.randomUUID();
+        GeorefImage image = new GeorefImage();
+        image.setId(imageId);
 
         ResidualsRequest request = new ResidualsRequest();
         request.setImageId(imageId);
 
+        when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
         when(gcpRepository.findByImageId(imageId)).thenReturn(Collections.emptyList());
 
         // WHEN + THEN
         assertThrows(GcpNotFoundException.class, () -> gcpService.updateResiduals(request));
+        verify(imageRepository).findById(imageId);
+        verify(gcpRepository).findByImageId(imageId);
+        verifyNoInteractions(residualsService);
+        verify(gcpRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -441,6 +445,7 @@ class GcpServiceTest {
         List<Gcp> gcps = List.of(gcp1, gcp2);
         TransformationType type = TransformationType.POLYNOMIALE_1;
 
+        when(imageRepository.findById(imageId)).thenReturn(Optional.of(image));
         when(gcpRepository.findByImageId(imageId)).thenReturn(gcps);
         when(residualsService.getMinimumPointsRequired(type)).thenReturn(3);
         when(residualsService.hasEnoughGCPs(anyList(), eq(type))).thenReturn(false);
@@ -582,4 +587,37 @@ class GcpServiceTest {
         assertThrows(DuplicateGcpIndexException.class, () -> gcpService.loadGcps(request));
     }
 
+    @Test
+    @DisplayName("should return true and delete successfully all GCPs of an image")
+    void deleteAllByImageId_shouldReturnTrue_whenGcpListIsNotEmpty() {
+        // Given
+        UUID imageId = UUID.randomUUID();
+        List<Gcp> gcpList = List.of(
+                new Gcp(), new Gcp()
+        );
+
+        when(gcpRepository.findAllByImageId(imageId)).thenReturn(gcpList);
+
+        // When
+        boolean result = gcpService.deleteAllGcpsByImageId(imageId);
+
+        // Then
+        assertTrue(result);
+        verify(gcpRepository).deleteAll(gcpList);
+    }
+
+    @Test
+    @DisplayName("should return false when the image has no GCPs to delete")
+    void deleteAllByImageId_shouldReturnFalse_whenGcpListIsEmpty() {
+        // Given
+        UUID imageId = UUID.randomUUID();
+        when(gcpRepository.findAllByImageId(imageId)).thenReturn(Collections.emptyList());
+
+        // When
+        boolean result = gcpService.deleteAllGcpsByImageId(imageId);
+
+        // Then
+        assertFalse(result);
+        verify(gcpRepository, never()).deleteAll(anyList());
+    }
 }

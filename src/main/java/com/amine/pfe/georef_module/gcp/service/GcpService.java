@@ -166,8 +166,8 @@ public class GcpService {
                 }
 
                 Integer startIndex = gcpRepository.findMaxIndexByImageId(imageId)
-                                                .map(maxIndex -> maxIndex + 1)
-                                                .orElse(1);
+                                .map(maxIndex -> maxIndex + 1)
+                                .orElse(1);
 
                 List<Gcp> newGcps = new ArrayList<>();
                 Integer index = startIndex;
@@ -183,13 +183,24 @@ public class GcpService {
                                         dto.getSourceY(),
                                         dto.getMapX(),
                                         dto.getMapY(),
-                                        index++
-                                );
+                                        index++);
                         newGcps.add(gcp);
                 }
 
                 List<Gcp> savedGcps = gcpRepository.saveAll(newGcps);
                 return GcpMapper.toGcpDtoList(savedGcps);
+        }
+
+        @Transactional
+        public boolean deleteAllGcpsByImageId(UUID imageId) {
+                List<Gcp> gcpList = gcpRepository.findAllByImageId(imageId);
+
+                if (gcpList.isEmpty()) {
+                        return false;
+                }
+
+                gcpRepository.deleteAll(gcpList);
+                return true;
         }
 
         private void validateImageIdNotNull(UUID imageId) {

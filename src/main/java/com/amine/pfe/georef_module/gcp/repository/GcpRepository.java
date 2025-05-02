@@ -21,4 +21,6 @@ public interface GcpRepository extends JpaRepository<Gcp, UUID> {
     Optional<Integer> findMaxIndexByImageId(@Param("imageId") UUID imageId);
 
     void deleteByImageId(UUID imageId);
+
+    List<Gcp> findAllByImageId(UUID imageId);
 }
