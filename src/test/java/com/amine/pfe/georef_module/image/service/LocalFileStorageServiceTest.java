@@ -42,7 +42,7 @@ public class LocalFileStorageServiceTest {
         Path fullPath = Paths.get(filename);
 
         // When
-        File resultPath = localFileStorageService.getFileByOriginalFilePath(fullPath.toString());
+        File resultPath = localFileStorageService.getFileByFilePath(fullPath.toString());
 
         // Then
         assertEquals(fullPath, resultPath.toPath());
@@ -75,7 +75,7 @@ public class LocalFileStorageServiceTest {
         when(storageConfig.getOriginalDir()).thenReturn(Paths.get("./georef-storage/originals"));
 
         // WHEN
-        Path filePath = localFileStorageService.exists(filenameWithHash);
+        Path filePath = localFileStorageService.existsInOriginalDir(filenameWithHash);
 
         // THEN
         assertEquals(fullPath, filePath);

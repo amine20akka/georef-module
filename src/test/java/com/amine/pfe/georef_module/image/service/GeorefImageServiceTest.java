@@ -276,7 +276,7 @@ class GeorefImageServiceTest {
 
         when(repository.findById(imageId)).thenReturn(Optional.of(savedImage));
         when(fileStorageService.removeHashFromFilePath(savedImage.getFilepathOriginal())).thenReturn(file.getOriginalFilename());
-        when(fileStorageService.exists(file.getOriginalFilename())).thenReturn(mockPath);
+        when(fileStorageService.existsInOriginalDir(file.getOriginalFilename())).thenReturn(mockPath);
         
         // WHEN
         GeorefImageDto result = georefImageService.getImageById(imageId);
@@ -328,7 +328,7 @@ class GeorefImageServiceTest {
 
         when(repository.findById(imageId)).thenReturn(Optional.of(image));
         when(fileStorageService.removeHashFromFilePath(image.getFilepathOriginal())).thenReturn(filename);
-        when(fileStorageService.exists(filename)).thenReturn(null);
+        when(fileStorageService.existsInOriginalDir(filename)).thenReturn(null);
 
         // WHEN + THEN
         assertThrows(ImageNotFoundException.class, () -> georefImageService.getImageById(imageId));
@@ -354,7 +354,7 @@ class GeorefImageServiceTest {
         image.setFilepathOriginal(mockPath.toString());
 
         when(repository.findById(imageId)).thenReturn(Optional.of(image));
-        when(fileStorageService.getFileByOriginalFilePath(image.getFilepathOriginal())).thenReturn(tempFile);        
+        when(fileStorageService.getFileByFilePath(image.getFilepathOriginal())).thenReturn(tempFile);        
 
         // WHEN
         File result = georefImageService.loadOriginalImageById(imageId);

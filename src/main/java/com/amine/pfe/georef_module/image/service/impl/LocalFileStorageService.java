@@ -2,6 +2,8 @@ package com.amine.pfe.georef_module.image.service.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,7 +26,7 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
-    public Path exists(String filenameWithHash) {
+    public Path existsInOriginalDir(String filenameWithHash) {
         if (filenameWithHash == null) {
             return null;
         }
@@ -40,8 +42,24 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
-    public Path saveOriginalFile(MultipartFile file, String filename) throws IOException {
-        Path targetPath = storageConfig.getOriginalDir().resolve(filename);
+    public Path existsInGeorefDir(String GeorefFilenameWithHash) {
+        if (GeorefFilenameWithHash == null) {
+            return null;
+        }
+
+        Path georefDir = storageConfig.getGeoreferencedDir();
+        if (georefDir == null) {
+            throw new IllegalStateException("Georef directory is not configured");
+        }
+
+        Path targetPath = georefDir.resolve(GeorefFilenameWithHash);
+
+        return targetPath;
+    }
+
+    @Override
+    public Path saveOriginalFile(MultipartFile file, String filenameWithHash) throws IOException {
+        Path targetPath = storageConfig.getOriginalDir().resolve(filenameWithHash);
         if (!Files.exists(targetPath)) {
             Files.copy(file.getInputStream(), targetPath);
         }
@@ -58,7 +76,7 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
-    public void deleteOriginalFile(String fullPath) throws IOException {
+    public void deleteFileByFullPath(String fullPath) throws IOException {
         Path targetPath = Paths.get(fullPath);
         if (Files.exists(targetPath)) {
             Files.delete(targetPath);
@@ -68,8 +86,8 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
-    public File getFileByOriginalFilePath(String originalFilePath) {
-        Path path = Paths.get(originalFilePath);
+    public File getFileByFilePath(String filePath) {
+        Path path = Paths.get(filePath);
         return path.toFile();
     }
 
@@ -91,9 +109,21 @@ public class LocalFileStorageService implements FileStorageService {
             return MediaType.IMAGE_PNG;
         if (filename.endsWith(".jpg") || filename.endsWith(".jpeg"))
             return MediaType.IMAGE_JPEG;
-        if (filename.endsWith(".gif"))
-            return MediaType.IMAGE_GIF;
         return MediaType.APPLICATION_OCTET_STREAM;
     }
 
+    @Override
+    public Path saveGeoreferencedFile(InputStream inputStream, String GeorefFilenameWithHash) throws IOException {
+        Path targetPath = storageConfig.getGeoreferencedDir().resolve(GeorefFilenameWithHash);
+
+        try (OutputStream outputStream = Files.newOutputStream(targetPath)) {
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+        }
+
+        return targetPath;
+    }
 }

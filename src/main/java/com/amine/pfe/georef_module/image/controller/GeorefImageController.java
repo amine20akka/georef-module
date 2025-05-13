@@ -50,7 +50,7 @@ public class GeorefImageController {
             @ApiResponse(responseCode = "415", description = "Format de fichier non supporté", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
             @ApiResponse(responseCode = "500", description = "Erreur interne lors de l'importation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
     })
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GeorefImageDto> uploadImage(@RequestParam("file") MultipartFile file) {
         try {
 
@@ -171,7 +171,7 @@ public class GeorefImageController {
     @GetMapping("/{id}/file")
     public ResponseEntity<FileSystemResource> getImageFile(@PathVariable UUID id) throws IOException {
         try {
-            
+
             File file = imageService.loadOriginalImageById(id);
             log.info("Fichier de l'image récupéré avec succès : {}", file.getCanonicalPath());
             FileSystemResource resource = new FileSystemResource(file);
@@ -181,20 +181,20 @@ public class GeorefImageController {
                     .body(resource);
 
         } catch (IllegalArgumentException e) {
-            
+
             log.error("L'ID de l'image ne peut pas être nul : {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
 
         } catch (ImageNotFoundException e) {
-            
+
             log.error("Image introuvable avec l'ID : {}", id, e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
         } catch (Exception e) {
-            
+
             log.error("Erreur lors de la récupération du fichier de l'image : {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        
+
         }
     }
 }

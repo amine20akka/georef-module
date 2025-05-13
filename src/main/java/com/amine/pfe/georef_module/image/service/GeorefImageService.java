@@ -21,10 +21,12 @@ import com.amine.pfe.georef_module.image.util.FileUtils;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class GeorefImageService {
 
     private final GeorefImageRepository repository;
@@ -52,7 +54,7 @@ public class GeorefImageService {
         }
 
         String filename = hash + "_" + originalFilename;
-        Path storedPath = fileStorageService.exists(filename);
+        Path storedPath = fileStorageService.existsInOriginalDir(filename);
         storedPath = fileStorageService.saveOriginalFile(file, filename);
 
         GeorefImage image = imageFactory.create(hash, storedPath, originalFilename);
@@ -69,7 +71,8 @@ public class GeorefImageService {
         GeorefImage image = repository.findById(imageId)
                 .orElseThrow(() -> new ImageNotFoundException("Image avec l'ID " + imageId + " non trouvée."));
 
-        String normalizedOutputFilename = FileUtils.normalizeOutputFilename(dto.getOutputFilename(), dto.getOutputFilename());
+        String normalizedOutputFilename = FileUtils.normalizeOutputFilename(dto.getOutputFilename(),
+                dto.getOutputFilename());
 
         image.setTransformationType(dto.getTransformationType());
         image.setSrid(dto.getSrid());
@@ -85,9 +88,9 @@ public class GeorefImageService {
     public void deleteImageById(UUID id) throws IOException {
         GeorefImage image = repository.findById(id)
                 .orElseThrow(() -> new ImageNotFoundException("Image introuvable avec l'id " + id));
-
+        
         repository.delete(image);
-        fileStorageService.deleteOriginalFile(image.getFilepathOriginal());
+        fileStorageService.deleteFileByFullPath(image.getFilepathOriginal());
     }
 
     public GeorefImageDto getImageById(UUID id) throws IOException {
@@ -99,10 +102,10 @@ public class GeorefImageService {
                 .orElseThrow(() -> new ImageNotFoundException("Image not found with the id : " + id));
 
         String filename = fileStorageService.removeHashFromFilePath(georefImage.getFilepathOriginal());
-        if (filename == null || fileStorageService.exists(filename) == null) {
+        if (filename == null || fileStorageService.existsInOriginalDir(filename) == null) {
             throw new ImageNotFoundException("This image does not exist in the file system.");
         }
-        
+
         GeorefImageDto georefImageDto = ImageMapper.toDto(georefImage);
         georefImageDto.setFilepathOriginal(filename);
         return georefImageDto;
@@ -116,6 +119,6 @@ public class GeorefImageService {
         GeorefImage image = repository.findById(id)
                 .orElseThrow(() -> new ImageNotFoundException("Image not found for id: " + id));
 
-        return fileStorageService.getFileByOriginalFilePath(image.getFilepathOriginal());
+        return fileStorageService.getFileByFilePath(image.getFilepathOriginal());
     }
 }
