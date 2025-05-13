@@ -1,7 +1,13 @@
 package com.amine.pfe.georef_module.image.mapper;
 
 import com.amine.pfe.georef_module.image.dto.*;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.amine.pfe.georef_module.entity.*;
+
 public class ImageMapper {
 
     // -------- GeorefImage --------
@@ -48,8 +54,18 @@ public class ImageMapper {
                 .workspace(entity.getWorkspace())
                 .storeName(entity.getStoreName())
                 .layerName(entity.getLayerName())
+                .wmsUrl(entity.getWmsUrl())
                 .status(entity.getStatus())
                 .build();
+    }
+
+    public static List<GeorefLayerDto> toDtoList(List<GeorefLayer> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return entities.stream()
+                .map(ImageMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     public static GeorefLayer toEntity(GeorefLayerDto dto, GeorefImage image) {
@@ -59,6 +75,7 @@ public class ImageMapper {
         entity.setWorkspace(dto.getWorkspace());
         entity.setStoreName(dto.getStoreName());
         entity.setLayerName(dto.getLayerName());
+        entity.setWmsUrl(dto.getWmsUrl());
         entity.setStatus(dto.getStatus());
         return entity;
     }

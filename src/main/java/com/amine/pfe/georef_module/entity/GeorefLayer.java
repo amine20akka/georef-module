@@ -20,12 +20,19 @@ public class GeorefLayer {
     @JoinColumn(name = "image_id", nullable = false, unique = true)
     private GeorefImage image;
 
+    @Column(nullable = false)
     private String workspace;
 
+    @Column(nullable = false)
     private String storeName;
 
+    @Column(nullable = false)
     private String layerName;
 
+    @Column(nullable = false)
+    private String wmsUrl;
+
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private LayerStatus status;
 }

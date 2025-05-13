@@ -10,7 +10,7 @@ public enum GeorefStatus {
     PENDING("pending"),
     PROCESSING("processing"),
     COMPLETED("completed"), 
-    FAILED("failed"),;
+    FAILED("failed");
 
     private final String label;
 
