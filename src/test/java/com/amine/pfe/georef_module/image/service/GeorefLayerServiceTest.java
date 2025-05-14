@@ -22,7 +22,9 @@ import com.amine.pfe.georef_module.entity.GeorefLayer;
 import com.amine.pfe.georef_module.enums.GeorefStatus;
 import com.amine.pfe.georef_module.exception.GeorefLayerNotFoundException;
 import com.amine.pfe.georef_module.image.repository.GeorefLayerRepository;
+import com.amine.pfe.georef_module.image.service.port.CartographicServer;
 import com.amine.pfe.georef_module.image.service.port.FileStorageService;
+import com.amine.pfe.georef_module.image.service.port.GeospatialServer;
 
 @ExtendWith(MockitoExtension.class)
 class GeorefLayerServiceTest {
@@ -38,6 +40,12 @@ class GeorefLayerServiceTest {
 
     @Mock
     private FileStorageService fileStorageService;
+
+    @Mock
+    private GeospatialServer geospatialServer;
+
+    @Mock
+    private CartographicServer cartographicServer;
 
     @Test
     void deleteGeorefLayer_shouldDeleteLayer_whenImageIsCompleted() throws IOException {
@@ -79,7 +87,7 @@ class GeorefLayerServiceTest {
         verifyNoInteractions(georefImageService, fileStorageService);
     }
 
-        @Test
+    @Test
     void deleteGeorefLayer_shouldThrowException_whenImageIsNotCompleted() throws IOException {
         // Given
         UUID layerId = UUID.randomUUID();
@@ -100,6 +108,35 @@ class GeorefLayerServiceTest {
 
         verify(georefImageService, never()).deleteImageById(any());
         verify(fileStorageService, never()).deleteFileByFullPath(any());
+    }
+
+    @Test
+    void shouldDeleteGeorefLayerSuccessfully() throws IOException {
+        // Given
+        UUID layerId = UUID.randomUUID();
+        GeorefImage image = GeorefImage.builder()
+                .id(UUID.randomUUID())
+                .outputFilename("output.tif")
+                .filepathGeoreferenced("/path/to/output.tif")
+                .build();
+
+        GeorefLayer layer = GeorefLayer.builder()
+                .id(layerId)
+                .image(image)
+                .layerName("layer1")
+                .storeName("store1")
+                .build();
+
+        when(georefLayerRepository.findById(layerId)).thenReturn(Optional.of(layer));
+        when(cartographicServer.deleteGeoTiffLayer("layer1", "store1")).thenReturn(true);
+
+        // When
+        georefLayerService.deleteGeorefLayerById(layerId);
+
+        // Then
+        verify(geospatialServer).deleteGeorefFile("output.tif");
+        verify(fileStorageService).deleteFileByFullPath("/path/to/output.tif");
+        verify(georefLayerRepository).delete(layer);
     }
 
 }

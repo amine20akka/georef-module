@@ -108,9 +108,9 @@ public class GeorefImageController {
         }
     }
 
-    @Operation(summary = "Supprimer une image", description = "Supprime une image par son ID")
+    @Operation(summary = "Supprimer une image", description = "Supprime une image par son ID avec son fichier")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Image supprimée avec succès"),
+            @ApiResponse(responseCode = "204", description = "Image supprimée avec son fichier avec succès"),
             @ApiResponse(responseCode = "404", description = "Image non trouvée"),
             @ApiResponse(responseCode = "500", description = "Erreur serveur")
     })
@@ -119,6 +119,33 @@ public class GeorefImageController {
         try {
 
             imageService.deleteImageById(id);
+            log.info("Image supprimée avec succès, id={}", id);
+            return ResponseEntity.noContent().build();
+
+        } catch (ImageNotFoundException ex) {
+
+            log.warn("Tentative de suppression d'une image inexistante, id={}", id);
+            throw ex;
+
+        } catch (Exception ex) {
+
+            log.error("Erreur lors de la suppression de l'image, id={}, erreur={}", id, ex.getMessage(), ex);
+            throw new RuntimeException("Erreur interne lors de la suppression de l'image");
+
+        }
+    }
+
+    @Operation(summary = "Supprimer une image", description = "Supprime une image par son ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Image supprimée avec succès"),
+            @ApiResponse(responseCode = "404", description = "Image non trouvée"),
+            @ApiResponse(responseCode = "500", description = "Erreur serveur")
+    })
+    @DeleteMapping("/without-file/{id}")
+    public ResponseEntity<Void> deleteGeorefImageWithoutFile(@PathVariable UUID id) {
+        try {
+
+            imageService.deleteGeorefImageWithoutFile(id);
             log.info("Image supprimée avec succès, id={}", id);
             return ResponseEntity.noContent().build();
 

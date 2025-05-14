@@ -9,4 +9,5 @@ import com.amine.pfe.georef_module.gcp.dto.GcpDto;
 
 public interface GeospatialServer {
     public InputStream processGeoref(File imageFile, List<GcpDto> gcps, GeorefSettings settings);
+    public boolean deleteGeorefFile(String filename);
 }

@@ -93,6 +93,13 @@ public class GeorefImageService {
         fileStorageService.deleteFileByFullPath(image.getFilepathOriginal());
     }
 
+    public void deleteGeorefImageWithoutFile(UUID imageId) {
+        GeorefImage image = repository.findById(imageId)
+                .orElseThrow(() -> new ImageNotFoundException("Image introuvable avec l'id " + imageId));
+        
+        repository.delete(image);
+    }
+
     public GeorefImageDto getImageById(UUID id) throws IOException {
         if (id == null) {
             throw new IllegalArgumentException("L'ID de l'image ne peut pas être nul.");

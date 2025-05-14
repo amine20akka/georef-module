@@ -20,6 +20,7 @@ import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.image.dto.GeorefLayerDto;
 import com.amine.pfe.georef_module.image.dto.GeorefRequest;
 import com.amine.pfe.georef_module.image.dto.GeorefResponse;
+import com.amine.pfe.georef_module.image.dto.RegeorefResponse;
 import com.amine.pfe.georef_module.image.service.GeorefLayerService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -106,6 +107,7 @@ public class GeorefLayerController {
             return ResponseEntity.noContent().build();
 
         } catch (GeorefLayerNotFoundException e) {
+
             log.warn("Couche non trouvée pour l'ID {} : {}", layerId, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
@@ -135,6 +137,26 @@ public class GeorefLayerController {
         } catch (Exception e) {
             log.error("Erreur inattendue lors de la récupération des couches géoréférencées", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Operation(summary = "Préparer le re-géoréférencement", description = "Créer une copie de l'image à re-géréférencer et la retourner avec ses GCPs", responses = {
+            @ApiResponse(responseCode = "200", description = "Copie crée avec succès et retournée avec ses GCPs"),
+            @ApiResponse(responseCode = "500", description = "Erreur interne lors de la préparation du re-géoréférencement")
+    })
+    @GetMapping(value = "/{imageId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RegeorefResponse> prepareRegeoref(@PathVariable UUID imageId) {
+        try {
+            
+            RegeorefResponse regeorefResponse = georefLayerService.prepareRegeoref(imageId);
+            log.info("Copie crée avec succès et retournée avec ses GCPs");
+            return ResponseEntity.status(HttpStatus.OK).body(regeorefResponse);
+        
+        } catch (Exception e) {
+        
+            log.error("Erreur inattendue lors de la préparation du re-géoréférencement", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        
         }
     }
 
