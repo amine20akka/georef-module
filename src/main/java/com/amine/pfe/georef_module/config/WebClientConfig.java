@@ -14,9 +14,6 @@ public class WebClientConfig {
     @Value("${gdal.server.url}")
     private String gdalServerUrl;
 
-    @Value("${geoserver.url}")
-    private String geoServerUrl;
-
     /**
      * WebClient configuré pour GDAL Server
      */
@@ -25,20 +22,6 @@ public class WebClientConfig {
         return WebClient.builder()
                 .baseUrl(gdalServerUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.MULTIPART_FORM_DATA_VALUE)
-                .codecs(configurer -> {
-                    configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024); // 10 MB
-                })
-                .build();
-    }
-
-    /**
-     * WebClient configuré pour GeoServer
-     */
-    @Bean(name = "geoServerWebClient")
-    public WebClient geoServerWebClient() {
-        return WebClient.builder()
-                .baseUrl(geoServerUrl)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE)
                 .codecs(configurer -> {
                     configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024); // 10 MB
                 })

@@ -21,6 +21,9 @@ import com.amine.pfe.georef_module.gcp.dto.GcpDto;
 import com.amine.pfe.georef_module.image.service.port.GeospatialServer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -73,5 +76,43 @@ public class GdalAdapter implements GeospatialServer {
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors du géoréférencement", e);
         }
+    }
+
+    @Override
+    public boolean deleteGeorefFile(String filename) {
+        log.debug("Suppression du fichier géoréférencé: {}", filename);
+        
+        try {
+            return webClient.delete()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/delete-georef")
+                    .queryParam("filename", filename)
+                    .build())
+                .retrieve()
+                .bodyToMono(DeleteResponse.class)
+                .map(DeleteResponse::isSuccess)
+                .doOnSuccess(success -> {
+                    if (Boolean.TRUE.equals(success)) {
+                        log.debug("Fichier supprimé avec succès: {}", filename);
+                    } else {
+                        log.warn("Échec de la suppression du fichier: {}", filename);
+                    }
+                })
+                .doOnError(error -> log.error("Erreur lors de la suppression du fichier {}: {}", 
+                        filename, error.getMessage()))
+                .onErrorReturn(false)
+                .block();
+        } catch (Exception e) {
+            log.error("Exception lors de la suppression du fichier {}: {}", filename, e.getMessage());
+            return false;
+        }
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeleteResponse {
+        private boolean success;
+        private String message;
     }
 }

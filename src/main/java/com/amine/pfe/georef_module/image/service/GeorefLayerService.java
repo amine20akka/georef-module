@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.amine.pfe.georef_module.entity.Gcp;
 import com.amine.pfe.georef_module.entity.GeorefImage;
 import com.amine.pfe.georef_module.entity.GeorefLayer;
 import com.amine.pfe.georef_module.enums.GeorefStatus;
@@ -17,11 +18,17 @@ import com.amine.pfe.georef_module.enums.LayerStatus;
 import com.amine.pfe.georef_module.exception.CartographicServerException;
 import com.amine.pfe.georef_module.exception.GeorefLayerNotFoundException;
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
+import com.amine.pfe.georef_module.gcp.dto.GcpDto;
+import com.amine.pfe.georef_module.gcp.dto.LoadGcpsRequest;
+import com.amine.pfe.georef_module.gcp.dto.ResidualsResult;
+import com.amine.pfe.georef_module.gcp.mapper.GcpMapper;
+import com.amine.pfe.georef_module.gcp.service.GcpService;
 import com.amine.pfe.georef_module.gcp.service.port.ResidualsService;
 import com.amine.pfe.georef_module.image.dto.GeorefLayerDto;
 import com.amine.pfe.georef_module.image.dto.GeorefRequest;
 import com.amine.pfe.georef_module.image.dto.GeorefResponse;
 import com.amine.pfe.georef_module.image.dto.PublicationResponse;
+import com.amine.pfe.georef_module.image.dto.RegeorefResponse;
 import com.amine.pfe.georef_module.image.mapper.ImageMapper;
 import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
 import com.amine.pfe.georef_module.image.repository.GeorefLayerRepository;
@@ -46,14 +53,10 @@ public class GeorefLayerService {
     private final ResidualsService residualsService;
     private final FileStorageService fileStorageService;
     private final GeorefImageService georefImageService;
+    private final GcpService gcpService;
 
     @Transactional
     public GeorefResponse georeferenceImage(GeorefRequest request, UUID imageId) throws IOException {
-
-        GeorefImage image = georefImageRepository.findById(imageId)
-                .orElseThrow(() -> {
-                    return new ImageNotFoundException("Image avec l'ID " + imageId + " non trouvée.");
-                });
 
         int minPointsRequired = residualsService
                 .getMinimumPointsRequired(request.getGeorefSettings().getTransformationType());
@@ -79,6 +82,11 @@ public class GeorefLayerService {
             return new GeorefResponse(false, minPointsRequired, message);
         }
 
+        GeorefImage image = georefImageRepository.findById(imageId)
+                .orElseThrow(() -> {
+                    return new ImageNotFoundException("Image avec l'ID " + imageId + " non trouvée.");
+                });
+
         try {
             File originalImage = fileStorageService.getFileByFilePath(image.getFilepathOriginal());
 
@@ -96,6 +104,18 @@ public class GeorefLayerService {
                     georefInputStream,
                     georefFilenameWithHash);
 
+            ResidualsResult result = residualsService.computeResiduals(
+                    request.getGcps(),
+                    request.getGeorefSettings().getTransformationType(),
+                    request.getGeorefSettings().getSrid());
+
+            image.setMeanResidual(result.getRmse());
+            gcpService.loadGcps(new LoadGcpsRequest(imageId, request.getGcps(), true));
+            image.setCompression(request.getGeorefSettings().getCompressionType());
+            image.setResamplingMethod(request.getGeorefSettings().getResamplingMethod());
+            image.setSrid(request.getGeorefSettings().getSrid());
+            image.setTransformationType(request.getGeorefSettings().getTransformationType());
+            image.setOutputFilename(request.getGeorefSettings().getOutputFilename());
             image.setFilepathGeoreferenced(georeferencedPath.toString());
             image.setStatus(GeorefStatus.COMPLETED);
             image.setLastGeoreferencingDate(LocalDateTime.now());
@@ -151,7 +171,15 @@ public class GeorefLayerService {
 
         GeorefImage image = layer.getImage();
 
-        georefLayerRepository.deleteById(georefLayerId);
+        boolean deleted = cartographicServer.deleteGeoTiffLayer(layer.getLayerName(), layer.getStoreName());
+        if (!deleted) {
+            throw new CartographicServerException(
+                    "Erreur lors de la suppression de la couche depuis le serveur cartographique");
+        }
+
+        image.setLayer(null);
+        georefLayerRepository.delete(layer);
+        geospatialServer.deleteGeorefFile(image.getOutputFilename());
         fileStorageService.deleteFileByFullPath(image.getFilepathGeoreferenced());
     }
 
@@ -171,6 +199,7 @@ public class GeorefLayerService {
         boolean deleted = cartographicServer.deleteGeoTiffLayer(layer.getLayerName(), layer.getStoreName());
         if (deleted) {
             georefImageService.deleteImageById(image.getId());
+            geospatialServer.deleteGeorefFile(image.getOutputFilename());
             fileStorageService.deleteFileByFullPath(image.getFilepathGeoreferenced());
         } else {
             throw new CartographicServerException(
@@ -182,4 +211,50 @@ public class GeorefLayerService {
         List<GeorefLayer> georefLayers = georefLayerRepository.findAll();
         return ImageMapper.toDtoList(georefLayers);
     }
+
+    @Transactional
+    public RegeorefResponse prepareRegeoref(UUID imageId) {
+        if (imageId == null) {
+            throw new IllegalArgumentException("L'ID de l'image ne peut pas être null");
+        }
+
+        final GeorefImage sourceImage = georefImageRepository.findById(imageId)
+                .orElseThrow(() -> new ImageNotFoundException("Image avec l'ID " + imageId + " non trouvée"));
+
+        final GeorefImage regeorefImage = createRegeorefImageFrom(sourceImage);
+        final GeorefImage savedImage = georefImageRepository.save(regeorefImage);
+
+        copyGcpsToNewImage(sourceImage.getGcps(), savedImage.getId());
+
+        List<GcpDto> regeorefImageGcps = gcpService.getGcpsByImageId(savedImage.getId());
+
+        return new RegeorefResponse(ImageMapper.toDto(savedImage), regeorefImageGcps);
+    }
+
+    private GeorefImage createRegeorefImageFrom(GeorefImage sourceImage) {
+        GeorefImage regeorefImage = new GeorefImage();
+        regeorefImage.setHash(sourceImage.getHash());
+        regeorefImage.setFilepathOriginal(sourceImage.getFilepathOriginal());
+        regeorefImage.setCompression(sourceImage.getCompression());
+        regeorefImage.setOutputFilename(sourceImage.getOutputFilename());
+        regeorefImage.setResamplingMethod(sourceImage.getResamplingMethod());
+        regeorefImage.setSrid(sourceImage.getSrid());
+        regeorefImage.setTransformationType(sourceImage.getTransformationType());
+
+        return regeorefImage;
+    }
+
+    private void copyGcpsToNewImage(List<Gcp> sourceGcps, UUID targetImageId) {
+        if (sourceGcps == null || sourceGcps.isEmpty()) {
+            return;
+        }
+
+        List<GcpDto> gcpDtos = GcpMapper.toGcpDtoList(sourceGcps);
+
+        gcpDtos.forEach(gcpDto -> {
+            gcpDto.setImageId(targetImageId);
+            gcpService.addGcp(gcpDto);
+        });
+    }
+
 }
