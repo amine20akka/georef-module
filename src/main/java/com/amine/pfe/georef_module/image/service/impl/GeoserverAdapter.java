@@ -66,7 +66,7 @@ public class GeoserverAdapter implements CartographicServer {
                         "  <name>%s</name>" +
                         "  <type>GeoTIFF</type>" +
                         "  <enabled>true</enabled>" +
-                        "  <url>file:C:/Users/aakkari/Downloads/pfe-sig-platform/%s</url>" +
+                        "  <url>file:C:/Users/aakkari/Downloads/pfe-backend/%s</url>" +
                         "  <workspace><name>%s</name></workspace>" +
                         "</coverageStore>",
                 storeName, filePath, WORKSPACE);
