@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.amine.pfe.georef_module.entity.GeorefImage;
+import com.amine.pfe.georef_module.enums.GeorefStatus;
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.image.dto.GeorefImageDto;
+import com.amine.pfe.georef_module.image.exceptions.ImageAlreadyGeoreferencedException;
 import com.amine.pfe.georef_module.image.exceptions.UnsupportedImageFormatException;
 import com.amine.pfe.georef_module.image.mapper.ImageMapper;
 import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
@@ -48,9 +50,16 @@ public class GeorefImageService {
         String hash = hashCalculator.calculate(file);
 
         if (repository.existsByHash(hash)) {
-            GeorefImageDto savedDto = ImageMapper.toDto(repository.findByHash(hash));
-            savedDto.setFilepathOriginal(originalFilename);
-            return savedDto;
+            GeorefImage existingImage = repository.findByHash(hash);
+
+            if (existingImage.getStatus() == GeorefStatus.COMPLETED) {
+                throw new ImageAlreadyGeoreferencedException(
+                        "L'image est déjà géoréférencée.");
+            } else {
+                GeorefImageDto savedDto = ImageMapper.toDto(existingImage);
+                savedDto.setFilepathOriginal(originalFilename);
+                return savedDto;
+            }
         }
 
         String filename = hash + "_" + originalFilename;
@@ -88,7 +97,7 @@ public class GeorefImageService {
     public void deleteImageById(UUID id) throws IOException {
         GeorefImage image = repository.findById(id)
                 .orElseThrow(() -> new ImageNotFoundException("Image introuvable avec l'id " + id));
-        
+
         repository.delete(image);
         fileStorageService.deleteFileByFullPath(image.getFilepathOriginal());
     }
@@ -96,7 +105,7 @@ public class GeorefImageService {
     public void deleteGeorefImageWithoutFile(UUID imageId) {
         GeorefImage image = repository.findById(imageId)
                 .orElseThrow(() -> new ImageNotFoundException("Image introuvable avec l'id " + imageId));
-        
+
         repository.delete(image);
     }
 

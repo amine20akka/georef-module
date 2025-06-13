@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.image.dto.GeorefImageDto;
+import com.amine.pfe.georef_module.image.exceptions.ImageAlreadyGeoreferencedException;
 import com.amine.pfe.georef_module.image.exceptions.UnsupportedImageFormatException;
 import com.amine.pfe.georef_module.image.service.GeorefImageService;
 import com.amine.pfe.georef_module.image.service.port.FileStorageService;
@@ -47,6 +48,7 @@ public class GeorefImageController {
 
     @Operation(summary = "Importer une image raster", description = "Permet d'importer une image à géoréférencer. Le fichier doit être au format PNG, JPEG ou TIFF.", responses = {
             @ApiResponse(responseCode = "200", description = "Image importée avec succès", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
+            @ApiResponse(responseCode = "409", description = "Image déjà géoréférencée et présente dans la TDM", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
             @ApiResponse(responseCode = "415", description = "Format de fichier non supporté", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
             @ApiResponse(responseCode = "500", description = "Erreur interne lors de l'importation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GeorefImageDto.class))),
     })
@@ -57,6 +59,11 @@ public class GeorefImageController {
             GeorefImageDto imageDto = imageService.uploadImage(file);
             log.info("Image importée avec succès : {}", imageDto);
             return ResponseEntity.status(200).body(imageDto);
+
+        } catch (ImageAlreadyGeoreferencedException e) {
+
+            log.warn("Image déjà géoréférencée : {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
 
         } catch (UnsupportedImageFormatException e) {
 
