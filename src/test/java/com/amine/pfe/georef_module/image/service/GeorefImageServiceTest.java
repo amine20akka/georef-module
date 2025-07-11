@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,11 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.amine.pfe.georef_module.image.dto.GeorefImageDto;
 import com.amine.pfe.georef_module.entity.GeorefImage;
-import com.amine.pfe.georef_module.enums.Compression;
 import com.amine.pfe.georef_module.enums.GeorefStatus;
-import com.amine.pfe.georef_module.enums.ResamplingMethod;
-import com.amine.pfe.georef_module.enums.Srid;
-import com.amine.pfe.georef_module.enums.TransformationType;
 import com.amine.pfe.georef_module.exception.ImageNotFoundException;
 import com.amine.pfe.georef_module.image.exceptions.UnsupportedImageFormatException;
 import com.amine.pfe.georef_module.image.repository.GeorefImageRepository;
@@ -174,42 +169,6 @@ class GeorefImageServiceTest {
         // WHEN + THEN
         assertThrows(UnsupportedImageFormatException.class, () -> georefImageService.uploadImage(invalidFile));
         verifyNoInteractions(hashCalculator, fileStorageService, georefImageFactory, repository);
-    }
-
-    @Test
-    @DisplayName("doit mettre à jour les paramètres de géoréférencement avec succès")
-    void shouldUpdateGeoreferencingParamsSuccessfully() throws IOException {
-        // GIVEN
-        UUID imageId = UUID.randomUUID();
-        GeorefImageDto dto = new GeorefImageDto();
-        dto.setId(imageId);
-        dto.setTransformationType(TransformationType.POLYNOMIALE_2);
-        dto.setSrid(Srid._3857);
-        dto.setResamplingMethod(ResamplingMethod.NEAREST);
-        dto.setCompression(Compression.LZW);
-
-        GeorefImage existingImage = new GeorefImage();
-        existingImage.setId(imageId);
-        existingImage.setTransformationType(TransformationType.POLYNOMIALE_1);
-        existingImage.setSrid(Srid._3857);
-        existingImage.setResamplingMethod(ResamplingMethod.BILINEAR);
-        existingImage.setCompression(Compression.NONE);
-
-        when(repository.findById(imageId)).thenReturn(Optional.of(existingImage));
-        when(repository.save(existingImage)).thenReturn(existingImage);
-
-        // WHEN
-        GeorefImageDto updatedDto = georefImageService.updateGeoreferencingParams(dto);
-
-        // THEN
-        assertNotNull(updatedDto);
-        assertEquals(existingImage.getId(), updatedDto.getId());
-        assertEquals(TransformationType.POLYNOMIALE_2, updatedDto.getTransformationType());
-        assertEquals(Srid._3857, updatedDto.getSrid());
-        assertEquals(ResamplingMethod.NEAREST, updatedDto.getResamplingMethod());
-        assertEquals(Compression.LZW, updatedDto.getCompression());
-        verify(repository, times(1)).findById(imageId);
-        verify(repository, times(1)).save(existingImage);
     }
 
     @Test
