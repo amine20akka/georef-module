@@ -24,6 +24,9 @@ jobs:
           java-version: '17'
           distribution: temurin
 
+      - name: Give permission to Maven Wrapper
+        run: chmod +x ./mvnw
+
       - name: Build module with Maven
         run: ./mvnw clean install -DskipTests
 
